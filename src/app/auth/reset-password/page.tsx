@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -13,7 +13,7 @@ import { resetPasswordSchema, type ResetPasswordInput } from "@/lib/validators/a
 import { resetPassword } from "@/lib/actions/auth"
 import { Eye, EyeOff } from "lucide-react"
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -163,5 +163,17 @@ export default function ResetPasswordPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">Loading...</div>
+      </div>
+    }>
+      <ResetPasswordForm />
+    </Suspense>
   )
 }

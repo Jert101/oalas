@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -15,12 +17,12 @@ export default function NotFound() {
             Page Not Found
           </CardTitle>
           <CardDescription className="text-center">
-            The page you're looking for doesn't exist.
+            The page you&apos;re looking for doesn&apos;t exist.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="text-center text-sm text-gray-600">
-            <p>It looks like you've reached a page that doesn't exist.</p>
+            <p>It looks like you&apos;ve reached a page that doesn&apos;t exist.</p>
             <p>Please check the URL or navigate back to a valid page.</p>
           </div>
           

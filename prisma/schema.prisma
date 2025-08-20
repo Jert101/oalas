@@ -1,0 +1,349 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  users_id             String             @id @map("users_id")
+  email                String             @unique
+  password             String?
+  name                 String
+  firstName            String?
+  lastName             String?
+  middleName           String?
+  suffix               String?
+  profilePicture       String?            @default("/ckcm.png")
+  isDepartmentHead     Boolean            @default(false)
+  isEmailVerified      Boolean            @default(false)
+  emailVerifiedAt      DateTime?
+  resetToken           String?            @unique
+  resetTokenExpiry     DateTime?
+  loginAttempts        Int                @default(0)
+  lockUntil            DateTime?
+  isActive             Boolean            @default(true)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  department_id        Int?
+  role_id              Int?
+  status_id            Int?
+  accounts             Account[]
+  reviewedApplications LeaveApplication[] @relation("ReviewedApplications")
+  reviewedTravelOrders TravelOrder[]     @relation("ReviewedTravelOrders")
+  leaveApplications    LeaveApplication[]
+  travelOrders         TravelOrder[]
+  probation            Probation?
+  sessions             Session[]
+  notifications        Notification[]
+  department           Department?        @relation(fields: [department_id], references: [department_id])
+  role                 Role?              @relation(fields: [role_id], references: [role_id])
+  status               Status?            @relation(fields: [status_id], references: [status_id])
+
+  @@index([department_id], map: "users_department_id_fkey")
+  @@index([role_id], map: "users_role_id_fkey")
+  @@index([status_id], map: "users_status_id_fkey")
+  @@map("users")
+}
+
+model Role {
+  role_id     Int      @id @default(autoincrement()) @map("role_id")
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User[]
+
+  @@map("roles")
+}
+
+model Department {
+  department_id Int                @id @default(autoincrement()) @map("department_id")
+  name          String             @unique
+  description   String?
+  category      DepartmentCategory
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  users         User[]
+
+  @@map("departments")
+}
+
+model Status {
+  status_id     Int            @id @default(autoincrement()) @map("status_id")
+  name          String         @unique
+  description   String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  leaveBalances LeaveBalance[]
+  leaveLimits   LeaveLimit[]
+  users         User[]
+
+  @@map("statuses")
+}
+
+model Account {
+  accounts_id       String  @id @default(cuid()) @map("accounts_id")
+  users_id          String  @map("users_id")
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [users_id], references: [users_id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([users_id], map: "accounts_users_id_fkey")
+  @@map("accounts")
+}
+
+model Session {
+  sessions_id  String   @id @default(cuid()) @map("sessions_id")
+  sessionToken String   @unique
+  users_id     String   @map("users_id")
+  expires      DateTime
+  user         User     @relation(fields: [users_id], references: [users_id], onDelete: Cascade)
+
+  @@index([users_id], map: "sessions_users_id_fkey")
+  @@map("sessions")
+}
+
+model VerificationToken {
+  verification_tokens_id String   @id @default(cuid()) @map("verification_tokens_id")
+  identifier             String
+  token                  String   @unique
+  expires                DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model CalendarPeriod {
+  calendar_period_id Int                @id @default(autoincrement()) @map("calendar_period_id")
+  academicYear       String
+  startDate          DateTime
+  endDate            DateTime
+  isCurrent          Boolean            @default(false)
+  isActive           Boolean            @default(true)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  term_type_id       Int                @map("term_type_id")
+  termType           TermType           @relation(fields: [term_type_id], references: [term_type_id])
+  leaveApplications  LeaveApplication[]
+  travelOrders       TravelOrder[]
+  leaveBalances      LeaveBalance[]
+
+  @@index([term_type_id], map: "calendar_periods_term_type_id_fkey")
+  @@map("calendar_periods")
+}
+
+model LeaveApplication {
+  leave_application_id Int               @id @default(autoincrement()) @map("leave_application_id")
+  users_id             String            @map("users_id")
+  calendar_period_id   Int?              @map("calendar_period_id")
+  startDate            DateTime
+  endDate              DateTime
+  reason               String?           @db.Text
+  status               ApplicationStatus @default(PENDING)
+  appliedAt            DateTime          @default(now())
+  reviewedAt           DateTime?
+  reviewedBy           String?
+  comments             String?           @db.Text
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  leave_type_id        Int
+  // New fields for enhanced leave application
+  paymentStatus        PaymentStatus     @default(PAID)
+  numberOfDays         Int
+  hours                Int
+  specificPurpose      String?           @db.Text
+  descriptionOfSickness String?          @db.Text
+  medicalProof         String?           @db.Text // File path for medical proof
+  calendarPeriod       CalendarPeriod?   @relation(fields: [calendar_period_id], references: [calendar_period_id])
+  reviewer             User?             @relation("ReviewedApplications", fields: [reviewedBy], references: [users_id])
+  user                 User              @relation(fields: [users_id], references: [users_id])
+  leaveType            leave_types       @relation(fields: [leave_type_id], references: [leave_type_id])
+  // Dean approval fields
+  deanReviewedAt       DateTime?
+  deanReviewedBy       String?
+  deanComments         String?           @db.Text
+  deanRejectionReason  String?           @db.Text
+
+  @@index([calendar_period_id], map: "leave_applications_calendar_period_id_fkey")
+  @@index([reviewedBy], map: "leave_applications_reviewedBy_fkey")
+  @@index([users_id], map: "leave_applications_users_id_fkey")
+  @@index([leave_type_id], map: "leave_applications_leave_type_id_fkey")
+  @@map("leave_applications")
+}
+
+model TravelOrder {
+  travel_order_id      Int               @id @default(autoincrement()) @map("travel_order_id")
+  users_id             String            @map("users_id")
+  calendar_period_id   Int?              @map("calendar_period_id")
+  destination          String
+  purpose              String            @db.Text
+  dateOfTravel         DateTime
+  expectedReturn       DateTime
+  transportationFee    Decimal           @db.Decimal(10, 2)
+  seminarConferenceFee Decimal           @db.Decimal(10, 2)
+  mealsAccommodations  Decimal           @db.Decimal(10, 2)
+  totalCashRequested   Decimal           @db.Decimal(10, 2)
+  supportingDocuments  String?           @db.Text // File path for supporting documents
+  remarks              String?           @db.Text
+  status               ApplicationStatus @default(PENDING)
+  appliedAt            DateTime          @default(now())
+  reviewedAt           DateTime?
+  reviewedBy           String?
+  comments             String?           @db.Text
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  calendarPeriod       CalendarPeriod?   @relation(fields: [calendar_period_id], references: [calendar_period_id])
+  reviewer             User?             @relation("ReviewedTravelOrders", fields: [reviewedBy], references: [users_id])
+  user                 User              @relation(fields: [users_id], references: [users_id])
+
+  @@index([calendar_period_id], map: "travel_orders_calendar_period_id_fkey")
+  @@index([reviewedBy], map: "travel_orders_reviewedBy_fkey")
+  @@index([users_id], map: "travel_orders_users_id_fkey")
+  @@map("travel_orders")
+}
+
+model LeaveLimit {
+  leave_limit_id Int         @id @default(autoincrement()) @map("leave_limit_id")
+  status_id      Int         @map("status_id")
+  daysAllowed    Int
+  isActive       Boolean     @default(true)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  leave_type_id  Int         @map("leave_type_id")
+  term_type_id   Int         @map("term_type_id")
+  leaveType      leave_types @relation(fields: [leave_type_id], references: [leave_type_id])
+  status         Status      @relation(fields: [status_id], references: [status_id])
+  termType       TermType    @relation(fields: [term_type_id], references: [term_type_id])
+
+  @@unique([status_id, term_type_id, leave_type_id])
+  @@index([leave_type_id], map: "leave_limits_leave_type_id_fkey")
+  @@index([term_type_id], map: "leave_limits_term_type_id_fkey")
+  @@index([status_id], map: "leave_limits_status_id_fkey")
+  @@map("leave_limits")
+}
+
+model LeaveBalance {
+  leave_balance_id   Int            @id @default(autoincrement()) @map("leave_balance_id")
+  users_id           String         @map("users_id")
+  calendar_period_id Int            @map("calendar_period_id")
+  status_id          Int            @map("status_id")
+  allowedDays        Int
+  usedDays           Int            @default(0)
+  remainingDays      Int
+  lastCalculated     DateTime       @default(now())
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  leave_type_id      Int            @map("leave_type_id")
+  term_type_id       Int            @map("term_type_id")
+  calendarPeriod     CalendarPeriod @relation(fields: [calendar_period_id], references: [calendar_period_id])
+  status             Status         @relation(fields: [status_id], references: [status_id])
+
+  @@unique([users_id, calendar_period_id, term_type_id, leave_type_id])
+  @@index([calendar_period_id], map: "leave_balances_calendar_period_id_fkey")
+  @@index([status_id], map: "leave_balances_status_id_fkey")
+  @@index([leave_type_id], map: "leave_balances_leave_type_id_fkey")
+  @@index([term_type_id], map: "leave_balances_term_type_id_fkey")
+  @@index([users_id], map: "leave_balances_users_id_fkey")
+  @@map("leave_balances")
+}
+
+model Probation {
+  probation_id   Int             @id @default(autoincrement()) @map("probation_id")
+  users_id       String          @unique @map("users_id")
+  startDate      DateTime
+  endDate        DateTime
+  probationDays  Int
+  status         ProbationStatus @default(ACTIVE)
+  completionDate DateTime?
+  isEmailSent    Boolean         @default(false)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  user           User            @relation(fields: [users_id], references: [users_id])
+
+  @@map("probations")
+}
+
+model TermType {
+  term_type_id    Int              @id @default(autoincrement()) @map("term_type_id")
+  name            String           @unique
+  description     String?
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  calendarPeriods CalendarPeriod[]
+  leaveLimits     LeaveLimit[]
+
+  @@map("term_types")
+}
+
+model leave_types {
+  leave_type_id Int          @id @default(autoincrement()) @map("leave_type_id")
+  name          String       @unique
+  description   String?
+  isActive      Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  leaveLimits   LeaveLimit[]
+  leaveApplications LeaveApplication[]
+
+  @@map("leave_types")
+}
+
+model Notification {
+  notification_id Int              @id @default(autoincrement()) @map("notification_id")
+  title           String
+  message         String           @db.Text
+  type            NotificationType @default(INFO)
+  isRead          Boolean          @default(false)
+  link            String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  userId          String           @map("user_id")
+  user            User             @relation(fields: [userId], references: [users_id])
+
+  @@index([userId], map: "notifications_user_id_fkey")
+  @@map("notifications")
+}
+
+enum DepartmentCategory {
+  NON_TEACHING_PERSONNEL
+  ACADEMIC_DEPARTMENT
+}
+
+enum ApplicationStatus {
+  PENDING
+  DEAN_APPROVED
+  DEAN_REJECTED
+  APPROVED
+  DENIED
+  CANCELLED
+}
+
+enum ProbationStatus {
+  ACTIVE
+  COMPLETED
+}
+
+enum PaymentStatus {
+  PAID
+  UNPAID
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+}

@@ -5,11 +5,13 @@ export async function query<T extends RowDataPacket[][] | ResultSetHeader>(
   params?: (string | number | boolean | null)[]
 ) {
   const connection = await mysql.createConnection({
-    host: process.env.DB_HOST,
-    port: parseInt(process.env.DB_PORT || '3306'),
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
+    host: process.env.DB_HOST,      // Your InfinityFree MySQL hostname (e.g., sql123.epizy.com)
+    user: process.env.DB_USER,      // Your InfinityFree MySQL username
+    password: process.env.DB_PASS,  // Your InfinityFree MySQL password
+    database: process.env.DB_NAME,  // Your InfinityFree database name
+    ssl: {
+      rejectUnauthorized: false     // Required for InfinityFree MySQL connection
+    }
   });
 
   try {

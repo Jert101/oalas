@@ -5,6 +5,90 @@ import CredentialsProvider from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
 
+const providers = [] as any[]
+
+if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
+  providers.push(
+    GitHubProvider({
+      clientId: process.env.GITHUB_CLIENT_ID!,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+    })
+  )
+}
+
+providers.push(
+  CredentialsProvider({
+    name: "credentials",
+    credentials: {
+      email: { label: "Email", type: "email" },
+      password: { label: "Password", type: "password" }
+    },
+    async authorize(credentials) {
+      if (!credentials?.email || !credentials?.password) {
+        throw new Error("Email and password required")
+      }
+
+      try {
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email },
+          select: {
+            users_id: true,
+            email: true,
+            password: true,
+            name: true,
+            profilePicture: true,
+            isEmailVerified: true,
+            isActive: true,
+            role: {
+              select: {
+                name: true
+              }
+            }
+          }
+        })
+
+        if (!user || !user.password) {
+          throw new Error("Invalid credentials")
+        }
+
+        // Check if user is active
+        if (!user.isActive) {
+          throw new Error("Account is deactivated")
+        }
+
+        const isPasswordValid = await bcrypt.compare(credentials.password, user.password)
+
+        if (!isPasswordValid) {
+          throw new Error("Invalid credentials")
+        }
+
+        return {
+          id: user.users_id,
+          email: user.email,
+          name: user.name,
+          role: user.role?.name || "Guest",
+          isEmailVerified: user.isEmailVerified,
+          profilePicture: user.profilePicture?.startsWith('/') 
+            ? user.profilePicture 
+            : `/${user.profilePicture || 'ckcm.png'}`,
+        }
+      } catch (dbError) {
+        console.error("Database error during authentication:", dbError)
+        // Re-throw the original error if it's an authentication error
+        if (dbError instanceof Error && dbError.message.includes("Invalid credentials")) {
+          throw dbError
+        }
+
+        if (dbError instanceof Error && dbError.message.includes("Account is deactivated")) {
+          throw dbError
+        }
+        // Only throw "Database connection failed" for actual DB errors
+        throw new Error("Database connection failed")
+      }
+    }
+  })
+)
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   session: {
@@ -16,86 +100,7 @@ export const authOptions: NextAuthOptions = {
     signOut: "/",
     error: "/auth/error",
   },
-  providers: [
-    GitHubProvider({
-      clientId: process.env.GITHUB_CLIENT_ID!,
-      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
-    }),
-    CredentialsProvider({
-      name: "credentials",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" }
-      },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error("Email and password required")
-        }
-
-        try {
-          const user = await prisma.user.findUnique({
-            where: { email: credentials.email },
-            select: {
-              users_id: true,
-              email: true,
-              password: true,
-              name: true,
-              profilePicture: true,
-              isEmailVerified: true,
-              isActive: true,
-              role: {
-                select: {
-                  name: true
-                }
-              }
-            }
-          })
-
-          if (!user || !user.password) {
-            throw new Error("Invalid credentials")
-          }
-
-
-
-          // Check if user is active
-          if (!user.isActive) {
-            throw new Error("Account is deactivated")
-          }
-
-          const isPasswordValid = await bcrypt.compare(credentials.password, user.password)
-
-          if (!isPasswordValid) {
-            throw new Error("Invalid credentials")
-          }
-
-
-
-          return {
-            id: user.users_id,
-            email: user.email,
-            name: user.name,
-            role: user.role?.name || "Guest",
-            isEmailVerified: user.isEmailVerified,
-            profilePicture: user.profilePicture?.startsWith('/') 
-              ? user.profilePicture 
-              : `/${user.profilePicture || 'ckcm.png'}`,
-          }
-        } catch (dbError) {
-          console.error("Database error during authentication:", dbError)
-          // Re-throw the original error if it's an authentication error
-          if (dbError instanceof Error && dbError.message.includes("Invalid credentials")) {
-            throw dbError
-          }
-
-          if (dbError instanceof Error && dbError.message.includes("Account is deactivated")) {
-            throw dbError
-          }
-          // Only throw "Database connection failed" for actual DB errors
-          throw new Error("Database connection failed")
-        }
-      }
-    })
-  ],
+  providers,
   callbacks: {
     async jwt({ token, user, trigger, session }) {
       // Initial login

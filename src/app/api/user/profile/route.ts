@@ -145,11 +145,8 @@ export async function PATCH(request: Request) {
       }
     })
 
-    return NextResponse.json({
-      success: true,
-      user: updatedUser,
-      message: "Profile updated successfully"
-    })
+    // Note: client should call next-auth's update() to refresh sidebar/session data
+    return NextResponse.json({ success: true, user: updatedUser, message: "Profile updated successfully" })
 
   } catch (error) {
     console.error("Error updating user profile:", error)

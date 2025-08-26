@@ -108,12 +108,21 @@ export const authOptions: NextAuthOptions = {
         token.role = user.role
         token.isEmailVerified = user.isEmailVerified
         token.profilePicture = user.profilePicture
+        // keep name/email in token so client sees updates after login
+        if (user.name) token.name = user.name
+        if (user.email) token.email = user.email
       }
       
       // Handle session updates (when update() is called)
       if (trigger === "update" && session) {
         if (session.profilePicture) {
           token.profilePicture = session.profilePicture
+        }
+        if (session.name) {
+          token.name = session.name as string
+        }
+        if (session.email) {
+          token.email = session.email as string
         }
       }
       
@@ -125,6 +134,8 @@ export const authOptions: NextAuthOptions = {
         session.user.role = token.role as string
         session.user.isEmailVerified = token.isEmailVerified as boolean
         session.user.profilePicture = token.profilePicture as string
+        if (token.name) session.user.name = token.name as string
+        if (token.email) session.user.email = token.email as string
       }
       return session
     },

@@ -157,6 +157,11 @@ export default function AccountSettingsPage() {
       if (response.ok) {
         toast.success("Profile updated successfully!")
         fetchUserDetails()
+        // Propagate name/email changes to NextAuth session so sidebar updates
+        await update({
+          name: data.name,
+          email: data.email,
+        })
       } else {
         toast.error("Failed to update profile")
       }
@@ -233,10 +238,8 @@ export default function AccountSettingsPage() {
           profilePicture: result.profilePicture
         } : null)
         
-        // Update the NextAuth session
-        await update({
-          profilePicture: result.profilePicture
-        })
+        // Update the NextAuth session so sidebar avatar updates
+        await update({ profilePicture: result.profilePicture })
       } else {
         const errorData = await response.json()
         toast.error(errorData.message || "Failed to upload avatar")

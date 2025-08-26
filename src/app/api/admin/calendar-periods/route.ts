@@ -68,16 +68,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Get the term type ID
-    const termType = await prisma.termType.findUnique({
-      where: { name: termName }
+    // Ensure term type exists (create on the fly if missing)
+    const termType = await prisma.termType.upsert({
+      where: { name: termName },
+      update: {},
+      create: { name: termName }
     })
-
-    if (!termType) {
-      return NextResponse.json(
-        { error: "Term type not found" },
-        { status: 400 }
-      )
-    }
 
     // Validate dates
     const start = new Date(startDate)

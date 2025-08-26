@@ -43,8 +43,6 @@ export const authOptions: NextAuthOptions = {
               profilePicture: true,
               isEmailVerified: true,
               isActive: true,
-              lockUntil: true,
-              loginAttempts: true,
               role: {
                 select: {
                   name: true
@@ -57,10 +55,7 @@ export const authOptions: NextAuthOptions = {
             throw new Error("Invalid credentials")
           }
 
-          // Check if account is locked
-          if (user.lockUntil && user.lockUntil > new Date()) {
-            throw new Error("Account temporarily locked due to too many failed attempts")
-          }
+
 
           // Check if user is active
           if (!user.isActive) {
@@ -70,27 +65,10 @@ export const authOptions: NextAuthOptions = {
           const isPasswordValid = await bcrypt.compare(credentials.password, user.password)
 
           if (!isPasswordValid) {
-            // Increment login attempts
-            await prisma.user.update({
-              where: { users_id: user.users_id },
-              data: {
-                loginAttempts: { increment: 1 },
-                lockUntil: user.loginAttempts >= 4 
-                  ? new Date(Date.now() + 15 * 60 * 1000) // 15 minutes
-                  : undefined
-              }
-            })
             throw new Error("Invalid credentials")
           }
 
-          // Reset login attempts on successful login
-          await prisma.user.update({
-            where: { users_id: user.users_id },
-            data: {
-              loginAttempts: 0,
-              lockUntil: null
-            }
-          })
+
 
           return {
             id: user.users_id,
@@ -108,9 +86,7 @@ export const authOptions: NextAuthOptions = {
           if (dbError instanceof Error && dbError.message.includes("Invalid credentials")) {
             throw dbError
           }
-          if (dbError instanceof Error && dbError.message.includes("Account temporarily locked")) {
-            throw dbError
-          }
+
           if (dbError instanceof Error && dbError.message.includes("Account is deactivated")) {
             throw dbError
           }

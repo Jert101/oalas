@@ -33,42 +33,27 @@ export function AdminRecentActivity() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Mock data for now - in a real app, this would come from an API
-    const mockActivities: RecentActivity[] = [
-      {
-        id: '1',
-        type: 'user_created',
-        description: 'New user account created',
-        user: { name: 'John Doe' },
-        timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString() // 30 minutes ago
-      },
-      {
-        id: '2',
-        type: 'probation_started',
-        description: 'Probationary period initiated',
-        user: { name: 'Jane Smith' },
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString() // 2 hours ago
-      },
-      {
-        id: '3',
-        type: 'leave_submitted',
-        description: 'Leave application submitted',
-        user: { name: 'Mike Johnson' },
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString() // 4 hours ago
-      },
-      {
-        id: '4',
-        type: 'leave_approved',
-        description: 'Leave application approved',
-        user: { name: 'Sarah Wilson' },
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString() // 8 hours ago
+    const fetchActivities = async () => {
+      try {
+        const response = await fetch('/api/admin/recent-activity')
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success) {
+            setActivities(data.data.activities)
+          } else {
+            console.error('Failed to fetch activities:', data.error)
+          }
+        } else {
+          console.error('Failed to fetch activities:', response.statusText)
+        }
+      } catch (error) {
+        console.error('Error fetching recent activities:', error)
+      } finally {
+        setLoading(false)
       }
-    ]
+    }
 
-    setTimeout(() => {
-      setActivities(mockActivities)
-      setLoading(false)
-    }, 500)
+    fetchActivities()
   }, [])
 
   const getActivityIcon = (type: string) => {

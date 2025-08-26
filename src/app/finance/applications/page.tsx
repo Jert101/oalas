@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { 
+import {
   FileText, 
   CheckCircle, 
   XCircle, 
@@ -74,6 +74,8 @@ export default function FinanceApplicationsPage() {
   const [showRejectDialog, setShowRejectDialog] = useState<number | null>(null)
   const [rejectionReason, setRejectionReason] = useState('')
   const router = useRouter()
+  
+
 
   useEffect(() => {
     const loadApplications = async () => {
@@ -92,6 +94,8 @@ export default function FinanceApplicationsPage() {
     }
     loadApplications()
   }, [])
+
+
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -211,11 +215,14 @@ export default function FinanceApplicationsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">All Leave Applications</h1>
-        <p className="text-muted-foreground">
-          Review and manage leave applications from all departments
-        </p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">All Leave Applications</h1>
+          <p className="text-muted-foreground">
+            Review and manage leave applications from all departments
+          </p>
+        </div>
+
       </div>
 
       {/* System Info */}

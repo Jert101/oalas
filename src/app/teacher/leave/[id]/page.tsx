@@ -90,10 +90,18 @@ export default function ApplicationDetailsPage() {
       setIsLoading(true)
       setError(null)
       
-      // Extract the type and actual ID from the prefixed ID
-      const [type, actualId] = id.split('_')
+      let type = 'leave'
+      let actualId = id
       
-      if (!type || !actualId) {
+      // Check if ID contains underscore (format: type_actualId)
+      if (id.includes('_')) {
+        const parts = id.split('_')
+        type = parts[0]
+        actualId = parts[1]
+      }
+      
+      // For backward compatibility, assume it's a leave application if no type specified
+      if (!actualId) {
         setError("Invalid application ID")
         return
       }
@@ -101,7 +109,7 @@ export default function ApplicationDetailsPage() {
       // Fetch from the appropriate API based on type
       const endpoint = type === 'travel' 
         ? `/api/teacher/travel-order/${actualId}`
-        : `/api/teacher/leave-applications/${actualId}`
+        : `/api/teacher/leave-application/${actualId}`
       
       const response = await fetch(endpoint)
       

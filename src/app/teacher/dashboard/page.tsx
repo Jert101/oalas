@@ -49,10 +49,14 @@ export default function TeacherDashboardPage() {
   const [recentApplications, setRecentApplications] = useState<RecentApplication[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [canApply, setCanApply] = useState(true)
+  
+
 
   useEffect(() => {
     fetchDashboardData()
   }, [])
+
+
 
   const fetchDashboardData = async () => {
     try {

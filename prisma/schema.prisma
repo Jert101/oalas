@@ -22,8 +22,6 @@ model User {
   emailVerifiedAt      DateTime?
   resetToken           String?            @unique
   resetTokenExpiry     DateTime?
-  loginAttempts        Int                @default(0)
-  lockUntil            DateTime?
   isActive             Boolean            @default(true)
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
@@ -180,6 +178,9 @@ model LeaveApplication {
   @@index([reviewedBy], map: "leave_applications_reviewedBy_fkey")
   @@index([users_id], map: "leave_applications_users_id_fkey")
   @@index([leave_type_id], map: "leave_applications_leave_type_id_fkey")
+  @@index([status], map: "leave_applications_status_idx")
+  @@index([calendar_period_id, status], map: "leave_applications_period_status_idx")
+  @@index([appliedAt], map: "leave_applications_applied_at_idx")
   @@map("leave_applications")
 }
 
@@ -314,6 +315,8 @@ model Notification {
   user            User             @relation(fields: [userId], references: [users_id])
 
   @@index([userId], map: "notifications_user_id_fkey")
+  @@index([userId, isRead], map: "notifications_user_read_idx")
+  @@index([createdAt], map: "notifications_created_at_idx")
   @@map("notifications")
 }
 

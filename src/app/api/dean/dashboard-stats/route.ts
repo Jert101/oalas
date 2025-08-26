@@ -38,42 +38,49 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "No current calendar period found" }, { status: 404 })
     }
 
-    // Get faculty members in the dean's department
-    const facultyMembers = await prisma.user.findMany({
-      where: {
-        department_id: user.department_id,
-        role: {
-          name: "Teacher/Instructor"
+    // Optimized: Get faculty members and applications in parallel
+    const [facultyMembers, leaveApplications] = await Promise.all([
+      prisma.user.findMany({
+        where: {
+          department_id: user.department_id,
+          role: {
+            name: "Teacher/Instructor"
+          },
         },
-        isActive: true
-      },
-      include: {
-        department: true,
-        status: true
-      }
-    })
-
-    // Get leave applications for faculty in the dean's department
-    const leaveApplications = await prisma.leaveApplication.findMany({
-      where: {
-        calendar_period_id: currentPeriod.calendar_period_id,
-        user: {
-          department_id: user.department_id
-        }
-      },
-      include: {
-        user: {
-          select: {
-            name: true,
-            email: true,
-            profilePicture: true
+        select: {
+          users_id: true,
+          name: true,
+          status: {
+            select: {
+              name: true
+            }
           }
         }
-      },
-      orderBy: {
-        appliedAt: 'desc'
-      }
-    })
+      }),
+      prisma.leaveApplication.findMany({
+        where: {
+          calendar_period_id: currentPeriod.calendar_period_id,
+          user: {
+            department_id: user.department_id
+          }
+        },
+        select: {
+          leave_application_id: true,
+          status: true,
+          appliedAt: true,
+          user: {
+            select: {
+              name: true,
+              email: true,
+              profilePicture: true
+            }
+          }
+        },
+        orderBy: {
+          appliedAt: 'desc'
+        }
+      })
+    ])
 
     // Calculate statistics
     const pendingApplications = leaveApplications.filter(app => app.status === 'PENDING').length

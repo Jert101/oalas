@@ -73,7 +73,9 @@ export async function GET(
       specificPurpose: application.specificPurpose,
       descriptionOfSickness: application.descriptionOfSickness,
       academicYear: application.calendarPeriod?.academicYear,
-      termType: application.calendarPeriod?.termType?.name
+      termType: application.calendarPeriod?.termType?.name,
+      deanComments: application.deanComments,
+      deanRejectionReason: application.deanRejectionReason
     }
 
     return NextResponse.json(formattedApplication)

@@ -4,6 +4,52 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { notifyFinanceRejectionToDean } from '@/lib/notification-service'
 
+// Function to send real-time application updates
+async function sendRealtimeApplicationUpdate(userId: string, application: any, updateType: 'update') {
+  try {
+    const message = {
+      type: 'application_update',
+      userId: userId,
+      data: {
+        type: updateType,
+        application: {
+          id: application.leave_application_id,
+          leaveType: application.leaveType?.name || 'Unknown',
+          startDate: application.startDate,
+          endDate: application.endDate,
+          status: application.status,
+          appliedAt: application.appliedAt,
+          reason: application.reason,
+          numberOfDays: application.numberOfDays,
+          comments: application.comments,
+          type: 'leave'
+        }
+      }
+    }
+    
+    // Send via HTTP to WebSocket server API
+    const response = await fetch(`http://localhost:3001/api/realtime/application`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userId: userId,
+        type: updateType,
+        application: message.data.application
+      })
+    })
+    
+    if (response.ok) {
+      console.log('✅ Real-time application update sent successfully')
+    } else {
+      console.warn('⚠️ Failed to send real-time application update:', response.status)
+    }
+  } catch (error) {
+    console.warn('Failed to send real-time application update:', error)
+  }
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -11,7 +57,7 @@ export async function POST(
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session || session.user.role !== 'Finance Officer') {
+    if (!session || session.user.role !== 'Finance Department') {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
@@ -142,6 +188,9 @@ export async function POST(
       console.error('❌ Error sending finance rejection notification to Dean:', error)
       // Don't fail the rejection if notification fails
     }
+
+    // Send real-time application update
+    await sendRealtimeApplicationUpdate(application.userId, applicationWithLeaveType, 'update')
 
     return NextResponse.json({
       success: true,

@@ -19,7 +19,7 @@ export default withAuth(
       if (token?.role === 'Dean/Program Head') {
         return NextResponse.redirect(new URL('/dean/dashboard', req.url))
       }
-      if (token?.role === 'Finance Officer') {
+      if (token?.role === 'Finance Department') {
         return NextResponse.redirect(new URL('/finance/dashboard', req.url))
       }
       // Teachers stay at /teacher/dashboard
@@ -34,7 +34,7 @@ export default withAuth(
 
     // Finance department routes
     if (pathname.startsWith('/finance')) {
-      if (token?.role !== 'Finance Officer' && token?.role !== 'Admin') {
+      if (token?.role !== 'Finance Department' && token?.role !== 'Admin') {
         return NextResponse.redirect(new URL('/unauthorized', req.url))
       }
     }
@@ -50,7 +50,7 @@ export default withAuth(
     if (pathname.startsWith('/teacher')) {
       if (token?.role !== 'Teacher/Instructor' && !['Admin'].includes(token?.role || '')) {
         // Redirect to their appropriate dashboard
-        if (token?.role === 'Finance Officer') {
+        if (token?.role === 'Finance Department') {
           return NextResponse.redirect(new URL('/finance/dashboard', req.url))
         } else if (token?.role === 'Dean/Program Head') {
           return NextResponse.redirect(new URL('/dean/dashboard', req.url))

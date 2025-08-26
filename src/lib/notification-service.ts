@@ -35,45 +35,32 @@ export async function createNotification({
       }
     })
 
-    // Send WebSocket notification if WebSocket server is available
+    // Send real-time notification via HTTP to WebSocket server
     try {
-      const wsUrl = process.env.NEXT_PUBLIC_WS_URL || (process.env.VERCEL_URL ? `wss://${process.env.VERCEL_URL}` : 'ws://localhost:3001')
-      const ws = new WebSocket(wsUrl)
-      
-      const message = JSON.stringify({
-        type: 'notification',
-        userId: userId,
-        notification: {
-          id: notification.notification_id,
-          title: notification.title,
-          message: notification.message,
-          type: notification.type,
-          timestamp: notification.createdAt,
-          isRead: notification.isRead,
-          link: notification.link
-        }
+      const response = await fetch(`http://localhost:3001/api/realtime/notify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: userId,
+          notification: {
+            id: notification.notification_id,
+            title: notification.title,
+            message: notification.message,
+            type: notification.type,
+            timestamp: notification.createdAt,
+            isRead: notification.isRead,
+            link: notification.link
+          }
+        })
       })
       
-      ws.onopen = () => {
-        console.log('Sending WebSocket notification:', message)
-        ws.send(message)
-        // Close after sending
-        setTimeout(() => ws.close(), 100)
+      if (response.ok) {
+        console.log('✅ Real-time notification sent successfully')
+      } else {
+        console.warn('⚠️ Failed to send real-time notification:', response.status)
       }
-      
-      ws.onerror = (error) => {
-        // Avoid throwing; proceed silently if WS server is down
-        console.warn('WebSocket send error, continuing without realtime:', error)
-      }
-      
-      // Timeout after 2 seconds
-      setTimeout(() => {
-        try {
-          if (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN) {
-            ws.close()
-          }
-        } catch {}
-      }, 2000)
     } catch (error) {
       // WebSocket not available, continue without real-time notification
       console.log('WebSocket not available, notification saved to database only:', error)

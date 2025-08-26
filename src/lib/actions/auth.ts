@@ -87,8 +87,7 @@ export async function resetPassword(values: z.infer<typeof resetPasswordSchema>)
         password: hashedPassword,
         resetToken: null,
         resetTokenExpiry: null,
-        loginAttempts: 0, // Reset login attempts
-        lockUntil: null
+
       }
     })
 

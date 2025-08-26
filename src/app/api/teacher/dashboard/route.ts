@@ -39,9 +39,6 @@ export async function GET(request: NextRequest) {
       where: {
         users_id: user.users_id,
         calendar_period_id: currentPeriod.calendar_period_id
-      },
-      include: {
-        leaveType: true
       }
     })
 

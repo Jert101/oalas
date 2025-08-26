@@ -4,6 +4,10 @@ import "./globals.css";
 import { SessionProvider } from "@/components/session-provider";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
+import { PerformanceMonitor } from "@/components/performance-monitor";
+import { serviceWorkerManager } from "@/lib/service-worker";
+import { RealtimeProvider } from "@/components/realtime-provider";
+import { AutoRefresh } from "@/components/auto-refresh";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,11 +39,17 @@ export default function RootLayout({
       >
         <SessionProvider>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-            {children}
-            <Toaster position="top-right" richColors closeButton />
+            <RealtimeProvider>
+              {children}
+              <Toaster position="top-right" richColors closeButton />
+              <PerformanceMonitor />
+              <AutoRefresh interval={15000} /> {/* Auto-refresh every 15 seconds */}
+            </RealtimeProvider>
           </ThemeProvider>
         </SessionProvider>
       </body>
     </html>
   );
 }
+
+

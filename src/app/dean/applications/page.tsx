@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { 
+import {
   FileText, 
   CheckCircle, 
   XCircle, 
@@ -59,6 +59,8 @@ export default function DeanApplicationsPage() {
   const [applicationsData, setApplicationsData] = useState<DeanApplicationsData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
+  
+
 
   useEffect(() => {
     const loadApplications = async () => {
@@ -77,6 +79,8 @@ export default function DeanApplicationsPage() {
     }
     loadApplications()
   }, [])
+
+
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -117,11 +121,14 @@ export default function DeanApplicationsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Leave Applications</h1>
-        <p className="text-muted-foreground text-sm sm:text-base">
-          Review and manage leave applications from your department faculty
-        </p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Leave Applications</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
+            Review and manage leave applications from your department faculty
+          </p>
+        </div>
+
       </div>
 
       {/* Department Info */}

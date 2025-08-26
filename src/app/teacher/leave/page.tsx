@@ -50,9 +50,13 @@ export default function TeacherLeavePage() {
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [selectedApplication, setSelectedApplication] = useState<{id: string, type: 'leave' | 'travel'} | null>(null)
 
+
+
   useEffect(() => {
     fetchApplications()
   }, [])
+
+
 
   useEffect(() => {
     filterApplications()
@@ -191,6 +195,7 @@ export default function TeacherLeavePage() {
             View and manage your leave applications
           </p>
         </div>
+
         <div className="flex flex-col items-start lg:items-end gap-2">
           <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
             <Button 

@@ -13,6 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import { useRealtimeNotifications } from "@/hooks/use-realtime"
 
 interface Notification {
   id: string
@@ -28,103 +29,14 @@ export default function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
-  const [wsConnected, setWsConnected] = useState(false)
   const router = useRouter()
+  
+  // Use real-time notifications hook
+  const { notifications: realtimeNotifications, isConnected } = useRealtimeNotifications()
 
   useEffect(() => {
     // Load initial notifications
     loadNotifications()
-    
-    // Only set up WebSocket on client side
-    if (typeof window === 'undefined') return
-    
-    // Set up WebSocket connection for real-time updates with retry and backoff
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
-    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || `${wsProtocol}://${window.location.hostname}:3001`
-    console.log('🔌 WebSocket target:', wsUrl)
-    let ws: WebSocket | null = null
-    let retryTimeout: ReturnType<typeof setTimeout> | null = null
-    let isConnecting = false
-    let reconnectAttempt = 0
-
-    const connect = () => {
-      if (isConnecting) return
-      isConnecting = true
-      
-      try {
-        console.log('🔌 Connecting to WebSocket:', wsUrl)
-        ws = new WebSocket(wsUrl)
-      } catch (e) {
-        console.warn('WebSocket construct error (will retry):', e)
-        isConnecting = false
-        scheduleReconnect()
-        return
-      }
-    
-      ws.onopen = () => {
-        console.log('WebSocket connected')
-        isConnecting = false
-        setWsConnected(true)
-        reconnectAttempt = 0
-        // Subscribe to notifications for the current user
-        fetch('/api/user/current')
-          .then(res => res.json())
-          .then(data => {
-            if (data?.success && data.user && ws?.readyState === WebSocket.OPEN) {
-              ws.send(JSON.stringify({
-                type: 'subscribe',
-                userId: data.user.users_id
-              }))
-            }
-          })
-          .catch(error => {
-            console.error('Error getting current user:', error)
-          })
-      }
-    
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data)
-          console.log('WebSocket message received:', data)
-          if (data.type === 'notification') {
-            addNotification(data.notification)
-          }
-        } catch (error) {
-          console.error('Error parsing WebSocket message:', error)
-        }
-      }
-    
-      ws.onerror = (error) => {
-        // Downgrade to warn to avoid dev overlay; schedule reconnect
-        console.warn('WebSocket error (will retry):', error)
-        isConnecting = false
-      }
-    
-      ws.onclose = () => {
-        console.log('WebSocket disconnected')
-        isConnecting = false
-        setWsConnected(false)
-        // Always schedule reconnect with backoff; this lets the client recover
-        scheduleReconnect()
-      }
-    }
-
-    const scheduleReconnect = () => {
-      if (retryTimeout) return
-      // Exponential backoff up to 30s
-      const delay = Math.min(30000, 1000 * Math.pow(2, reconnectAttempt || 0))
-      reconnectAttempt = Math.min(reconnectAttempt + 1, 10)
-      console.log(`⏳ Reconnecting WebSocket in ${Math.round(delay / 1000)}s (attempt ${reconnectAttempt})`)
-      retryTimeout = setTimeout(() => {
-        retryTimeout = null
-        connect()
-      }, delay)
-    }
-
-    // Delay initial connection to ensure page is fully loaded
-    const initialTimeout = setTimeout(() => {
-      connect()
-    }, 1000)
     
     // Set up periodic refresh as fallback (every 30 seconds)
     const refreshInterval = setInterval(() => {
@@ -132,12 +44,16 @@ export default function NotificationBell() {
     }, 30000)
     
     return () => {
-      if (retryTimeout) clearTimeout(retryTimeout)
-      if (initialTimeout) clearTimeout(initialTimeout)
       if (refreshInterval) clearInterval(refreshInterval)
-      ws?.close()
     }
   }, [])
+
+  // Update notifications when real-time data comes in
+  useEffect(() => {
+    if (realtimeNotifications && realtimeNotifications.length > 0) {
+      setNotifications(realtimeNotifications)
+    }
+  }, [realtimeNotifications])
 
   useEffect(() => {
     // Update unread count whenever notifications change
@@ -146,13 +62,22 @@ export default function NotificationBell() {
 
   const loadNotifications = async () => {
     try {
-      const response = await fetch('/api/notifications')
+      const response = await fetch('/api/notifications', {
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      })
       if (response.ok) {
         const data = await response.json()
-        setNotifications(data.notifications || [])
+        if (data.success) {
+          setNotifications(data.notifications || [])
+        }
+      } else {
+        console.warn('Failed to load notifications:', response.status)
       }
     } catch (error) {
       console.error('Error loading notifications:', error)
+      // Don't throw error, just log it
     }
   }
 
@@ -255,10 +180,10 @@ export default function NotificationBell() {
               {unreadCount > 99 ? '99+' : unreadCount}
             </Badge>
           )}
-          {wsConnected ? (
-            <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-green-500 rounded-full" title="WebSocket connected" />
+          {isConnected ? (
+            <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-green-500 rounded-full" title="Real-time connected" />
           ) : (
-            <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-gray-400 rounded-full" title="WebSocket disconnected" />
+            <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-gray-400 rounded-full" title="Real-time disconnected" />
           )}
         </Button>
       </PopoverTrigger>

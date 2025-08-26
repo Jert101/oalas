@@ -5,6 +5,52 @@ import { prisma } from "@/lib/prisma"
 import { notifyLeaveApplicationApproved } from "@/lib/notification-service"
 import { realEmailService } from "@/lib/real-email-service"
 
+// Function to send real-time application updates
+async function sendRealtimeApplicationUpdate(userId: string, application: any, updateType: 'update') {
+  try {
+    const message = {
+      type: 'application_update',
+      userId: userId,
+      data: {
+        type: updateType,
+        application: {
+          id: application.leave_application_id,
+          leaveType: application.leaveType?.name || 'Unknown',
+          startDate: application.startDate,
+          endDate: application.endDate,
+          status: application.status,
+          appliedAt: application.appliedAt,
+          reason: application.reason,
+          numberOfDays: application.numberOfDays,
+          comments: application.deanComments,
+          type: 'leave'
+        }
+      }
+    }
+    
+    // Send via HTTP to WebSocket server API
+    const response = await fetch(`http://localhost:3001/api/realtime/application`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userId: userId,
+        type: updateType,
+        application: message.data.application
+      })
+    })
+    
+    if (response.ok) {
+      console.log('✅ Real-time application update sent successfully')
+    } else {
+      console.warn('⚠️ Failed to send real-time application update:', response.status)
+    }
+  } catch (error) {
+    console.warn('Failed to send real-time application update:', error)
+  }
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -107,6 +153,9 @@ export async function POST(
       applicationId,
       user.name
     )
+
+    // Send real-time application update
+    await sendRealtimeApplicationUpdate(application.user.users_id, updatedApplication, 'update')
 
     return NextResponse.json({
       success: true,

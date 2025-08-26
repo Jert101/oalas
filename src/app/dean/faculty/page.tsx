@@ -25,6 +25,9 @@ interface FacultyMember {
   department: {
     name: string
   }
+  role: {
+    name: string
+  }
   createdAt: string
 }
 
@@ -35,31 +38,13 @@ export default function DeanFacultyPage() {
   useEffect(() => {
     const loadFaculty = async () => {
       try {
-        const res = await fetch('/api/dean/dashboard-stats')
+        const res = await fetch('/api/dean/faculty')
         if (!res.ok) throw new Error('Failed to load faculty')
         const data = await res.json()
         if (data.success) {
-          // For now, we'll use mock data since the API doesn't return faculty list
-          setFaculty([
-            {
-              users_id: "1",
-              name: "John Doe",
-              email: "john.doe@ckcm.edu.ph",
-              profilePicture: "/ckcm.png",
-              status: { name: "Regular" },
-              department: { name: "Computer Science" },
-              createdAt: "2024-01-01"
-            },
-            {
-              users_id: "2", 
-              name: "Jane Smith",
-              email: "jane.smith@ckcm.edu.ph",
-              profilePicture: "/ckcm.png",
-              status: { name: "Probation" },
-              department: { name: "Computer Science" },
-              createdAt: "2024-02-01"
-            }
-          ])
+          setFaculty(data.data.faculty)
+        } else {
+          console.error('API returned error:', data.error)
         }
       } catch (error) {
         console.error('Error loading faculty:', error)
@@ -78,6 +63,17 @@ export default function DeanFacultyPage() {
         return <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">Probation</Badge>
       default:
         return <Badge variant="secondary">{status}</Badge>
+    }
+  }
+
+  const getRoleBadge = (role: string) => {
+    switch (role) {
+      case 'Teacher/Instructor':
+        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Teacher</Badge>
+      case 'Non Teaching Personnel':
+        return <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100">Non-Teaching</Badge>
+      default:
+        return <Badge variant="outline">{role}</Badge>
     }
   }
 
@@ -107,7 +103,7 @@ export default function DeanFacultyPage() {
       </div>
 
       {/* Faculty Statistics */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Faculty</CardTitle>
@@ -147,6 +143,36 @@ export default function DeanFacultyPage() {
             </div>
             <p className="text-xs text-muted-foreground">
               Under probation
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Teachers</CardTitle>
+            <UserCheck className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {faculty.filter(f => f.role.name === 'Teacher/Instructor').length}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Teaching staff
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Non-Teaching</CardTitle>
+            <Users className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {faculty.filter(f => f.role.name === 'Non Teaching Personnel').length}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Support staff
             </p>
           </CardContent>
         </Card>
@@ -197,6 +223,7 @@ export default function DeanFacultyPage() {
                   </div>
                   <div className="flex items-center space-x-2 flex-wrap">
                     {getStatusBadge(member.status.name)}
+                    {getRoleBadge(member.role.name)}
                     <Button 
                       variant="ghost" 
                       size="sm"

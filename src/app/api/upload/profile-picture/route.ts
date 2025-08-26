@@ -49,15 +49,20 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(bytes)
     await writeFile(filePath, buffer)
 
-    // Return the public URL
-    const publicUrl = `/uploads/profiles/${fileName}`
+    // Return absolute URL for production reliability
+    const baseUrl = process.env.NEXTAUTH_URL || ''
+    const publicUrl = baseUrl
+      ? `${baseUrl.replace(/\/$/, '')}/uploads/profiles/${fileName}`
+      : `/uploads/profiles/${fileName}`
     
-    return NextResponse.json({
+    const res = NextResponse.json({
       url: publicUrl,
       fileName: fileName,
       size: file.size,
       type: file.type
     })
+    res.headers.set('Cache-Control', 'public, max-age=31536000, immutable')
+    return res
 
   } catch (error) {
     console.error('Upload error:', error)

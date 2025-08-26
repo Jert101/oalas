@@ -59,6 +59,21 @@ const adminNavigationItems = [
     url: "/admin/manage-probation",
     icon: IconClock,
   },
+  {
+    title: "Leave Types",
+    url: "/admin/leave-types",
+    icon: IconSettings,
+  },
+  {
+    title: "Departments",
+    url: "/admin/departments",
+    icon: IconSettings,
+  },
+  {
+    title: "Roles",
+    url: "/admin/roles",
+    icon: IconSettings,
+  },
 ]
 
 const teacherNavigationItems = [

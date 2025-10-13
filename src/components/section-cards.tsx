@@ -97,6 +97,7 @@ export function SectionCards({ className }: SectionCardsProps) {
         }
       case "Finance Department":
       case "Finance Officer":
+      case "Finance Office Head":
         return {
           title1: "Total Budget",
           value1: "₱500,000",

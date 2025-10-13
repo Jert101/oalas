@@ -283,7 +283,7 @@ export default function AccountSettingsPage() {
     >
       {user.role === "Dean/Program Head" ? (
         <DeanSidebar variant="inset" />
-      ) : user.role === "Finance Officer" ? (
+      ) : user.role === "Finance Officer" || user.role === "Finance Office Head" ? (
         <FinanceSidebar variant="inset" />
       ) : (
         <AppSidebar variant="inset" />

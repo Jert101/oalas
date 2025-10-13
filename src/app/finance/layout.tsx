@@ -23,7 +23,7 @@ export default function FinanceLayout({ children }: FinanceLayoutProps) {
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login")
-    } else if (session?.user?.role !== "Finance Department" && session?.user?.role !== "Finance Officer") {
+    } else if (session?.user?.role !== "Finance Department" && session?.user?.role !== "Finance Officer" && session?.user?.role !== "Finance Office Head") {
       router.push("/dashboard")
     } else {
       setIsLoading(false)
@@ -41,7 +41,7 @@ export default function FinanceLayout({ children }: FinanceLayoutProps) {
     )
   }
 
-  if (!session || (session.user.role !== "Finance Department" && session.user.role !== "Finance Officer")) {
+  if (!session || (session.user.role !== "Finance Department" && session.user.role !== "Finance Officer" && session.user.role !== "Finance Office Head")) {
     return null
   }
 

@@ -471,7 +471,8 @@ export default function ManageAccountsPage() {
       })
 
       if (!response.ok) {
-        throw new Error("Failed to delete user")
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to delete user")
       }
 
       toast.success("User deleted successfully")
@@ -480,7 +481,8 @@ export default function ManageAccountsPage() {
       fetchUsers() // Refresh the list
     } catch (error) {
       console.error("Error deleting user:", error)
-      toast.error("Failed to delete user")
+      const errorMessage = error instanceof Error ? error.message : "Failed to delete user"
+      toast.error(errorMessage)
     }
   }
 

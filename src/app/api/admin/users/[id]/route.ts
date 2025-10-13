@@ -76,7 +76,105 @@ export async function DELETE(
       )
     }
 
-    // Delete the user
+    // Check for related records that would prevent deletion
+    const relatedRecords = await prisma.user.findUnique({
+      where: { users_id: userId },
+      include: {
+        leaveApplications: {
+          select: { leave_application_id: true, status: true }
+        },
+        leaveBalances: {
+          select: { leave_balance_id: true }
+        },
+        probation: {
+          select: { probation_id: true, status: true }
+        },
+        travelOrders: {
+          select: { travel_order_id: true, status: true }
+        },
+        notifications: {
+          select: { notification_id: true }
+        },
+        accounts: {
+          select: { accounts_id: true }
+        }
+      }
+    })
+
+    // Check for leave applications
+    if (relatedRecords?.leaveApplications && relatedRecords.leaveApplications.length > 0) {
+      const pendingApps = relatedRecords.leaveApplications.filter(app => 
+        app.status === 'PENDING' || app.status === 'DEAN_APPROVED'
+      )
+      if (pendingApps.length > 0) {
+        return NextResponse.json(
+          { 
+            error: `Cannot delete user. They have ${pendingApps.length} pending leave application(s). Please approve, reject, or cancel them first.`,
+            details: {
+              totalApplications: relatedRecords.leaveApplications.length,
+              pendingApplications: pendingApps.length,
+              applications: relatedRecords.leaveApplications.map(app => ({
+                id: app.leave_application_id,
+                status: app.status
+              }))
+            }
+          },
+          { status: 400 }
+        )
+      }
+    }
+
+    // Check for leave balances
+    if (relatedRecords?.leaveBalances && relatedRecords.leaveBalances.length > 0) {
+      return NextResponse.json(
+        { 
+          error: `Cannot delete user. They have ${relatedRecords.leaveBalances.length} leave balance record(s). Please contact system administrator.`,
+          details: {
+            leaveBalances: relatedRecords.leaveBalances.length
+          }
+        },
+        { status: 400 }
+      )
+    }
+
+    // Check for active probation
+    if (relatedRecords?.probation && relatedRecords.probation.status === 'ACTIVE') {
+      return NextResponse.json(
+        { 
+          error: "Cannot delete user. They have an active probation record.",
+          details: {
+            probationId: relatedRecords.probation.probation_id,
+            status: relatedRecords.probation.status
+          }
+        },
+        { status: 400 }
+      )
+    }
+
+    // Check for pending travel orders
+    if (relatedRecords?.travelOrders && relatedRecords.travelOrders.length > 0) {
+      const pendingTravel = relatedRecords.travelOrders.filter(order => 
+        order.status === 'PENDING' || order.status === 'DEAN_APPROVED'
+      )
+      if (pendingTravel.length > 0) {
+        return NextResponse.json(
+          { 
+            error: `Cannot delete user. They have ${pendingTravel.length} pending travel order(s). Please approve, reject, or cancel them first.`,
+            details: {
+              totalTravelOrders: relatedRecords.travelOrders.length,
+              pendingTravelOrders: pendingTravel.length,
+              travelOrders: relatedRecords.travelOrders.map(order => ({
+                id: order.travel_order_id,
+                status: order.status
+              }))
+            }
+          },
+          { status: 400 }
+        )
+      }
+    }
+
+    // Delete the user (cascade will handle accounts, sessions, and notifications)
     await prisma.user.delete({
       where: { users_id: userId }
     })

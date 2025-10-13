@@ -16,7 +16,7 @@ model User {
   lastName             String?
   middleName           String?
   suffix               String?
-  profilePicture       String?            @default("/ckcm.png") @db.Text
+  profilePicture       String?            @db.Text
   isDepartmentHead     Boolean            @default(false)
   isEmailVerified      Boolean            @default(false)
   emailVerifiedAt      DateTime?

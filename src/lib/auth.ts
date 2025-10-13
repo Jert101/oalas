@@ -8,6 +8,21 @@ import { prisma } from "@/lib/prisma"
 import { fetchAndCleanGoogleProfilePicture } from "@/lib/google-avatar-fix"
 
 const providers = [] as any[]
+// Google OAuth provider (CKCM domain only)
+providers.push(
+  GoogleProvider({
+    clientId: process.env.GOOGLE_CLIENT_ID!,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    authorization: {
+      params: {
+        prompt: process.env.GOOGLE_OAUTH_PROMPT || "select_account",
+        access_type: "offline",
+        response_type: "code",
+        hd: "ckcm.edu.ph",
+      },
+    },
+  })
+)
 
 if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
   providers.push(

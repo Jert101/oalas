@@ -363,12 +363,21 @@ const setupSchema = {
 
         let redirectPath = "/dashboard" // route through central dashboard; middleware maps by role
 
-        // High-level routing rules
+        // High-level routing rules (PRIORITY: specific roles first)
         // 1) Admin
         if (selectedRole?.name === "Admin") {
           redirectPath = "/admin/dashboard"
         }
-        // 2) Department Head or Dean-like roles/categories
+        // 2) Finance (PRIORITY: before general office head check)
+        else if (
+          selectedCategory?.name === "Finance" ||
+          selectedRole?.name === "Finance Department" ||
+          selectedRole?.name === "Finance Officer" ||
+          selectedRole?.name === "Finance Office Head"
+        ) {
+          redirectPath = "/finance/dashboard"
+        }
+        // 3) Department Head or Dean-like roles/categories
         else if (
           selectedRole?.name === "Dean/Program Head" ||
           selectedRole?.name === "Department Head" ||
@@ -377,15 +386,6 @@ const setupSchema = {
           (selectedCategory?.name === "Non Teaching Staff" && isOfficeHead)
         ) {
           redirectPath = "/dean/dashboard"
-        }
-        // 3) Finance
-        else if (
-          selectedCategory?.name === "Finance" ||
-          selectedRole?.name === "Finance Department" ||
-          selectedRole?.name === "Finance Officer" ||
-          selectedRole?.name === "Finance Office Head"
-        ) {
-          redirectPath = "/finance/dashboard"
         }
         // 4) Teacher and default staff
         else if (

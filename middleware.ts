@@ -47,8 +47,25 @@ export default withAuth(
         return NextResponse.redirect(new URL('/admin/dashboard', req.url))
       }
       
+      // PRIORITY: Check specific role-based routing FIRST (before general isDepartmentHead check)
+      if (token?.role === 'Finance Department' || token?.role === 'Finance Officer' || token?.role === 'Finance Office Head') {
+        console.log("[Middleware] 💰 Finance role detected - redirecting to finance dashboard:", {
+          role: token?.role,
+          redirectingTo: '/finance/dashboard'
+        })
+        return NextResponse.redirect(new URL('/finance/dashboard', req.url))
+      }
+      
+      if (token?.role === 'Teacher/Instructor' || token?.role === 'Teacher') {
+        return NextResponse.redirect(new URL('/teacher/dashboard', req.url))
+      }
+      if (token?.role === 'Dean/Program Head' || token?.role === 'Department Head') {
+        return NextResponse.redirect(new URL('/dean/dashboard', req.url))
+      }
+      
       // Check for office heads (isDepartmentHead) who should go to dean dashboard
       // This includes any Non Teaching Staff role that is marked as office head
+      // BUT only if they haven't been caught by specific role routing above
       console.log("[Middleware] Checking office head status:", {
         email: token?.email,
         role: token?.role,
@@ -69,16 +86,6 @@ export default withAuth(
           role: token?.role,
           isDepartmentHead: (token as any)?.isDepartmentHead
         })
-      }
-      
-      if (token?.role === 'Teacher/Instructor' || token?.role === 'Teacher') {
-        return NextResponse.redirect(new URL('/teacher/dashboard', req.url))
-      }
-      if (token?.role === 'Dean/Program Head' || token?.role === 'Department Head') {
-        return NextResponse.redirect(new URL('/dean/dashboard', req.url))
-      }
-      if (token?.role === 'Finance Department' || token?.role === 'Finance Officer' || token?.role === 'Finance Office Head') {
-        return NextResponse.redirect(new URL('/finance/dashboard', req.url))
       }
       if (token?.role === 'Office Clerk') {
         return NextResponse.redirect(new URL('/teacher/dashboard', req.url))

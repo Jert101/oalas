@@ -37,29 +37,29 @@ export default function DashboardPage() {
       return
     }
 
-    // Office head check
-    if (isDepartmentHead) {
-      console.log("[Dashboard] ✅ Office head detected, redirecting to dean dashboard")
-      router.push('/dean/dashboard')
-      return
-    }
-
-    // Role-based routing
+    // Role-based routing (PRIORITY: specific roles first, before general isDepartmentHead check)
     if (userRole === 'Admin') {
       console.log("[Dashboard] 🔧 Admin detected, redirecting to admin dashboard")
       router.push('/admin/dashboard')
       return
     }
 
-    if (userRole === 'Dean/Program Head' || userRole === 'Department Head') {
-      console.log("[Dashboard] 🏛️ Dean detected, redirecting to dean dashboard")
+    if (userRole === 'Finance Department' || userRole === 'Finance Officer' || userRole === 'Finance Office Head') {
+      console.log("[Dashboard] 💰 Finance detected, redirecting to finance dashboard")
+      router.push('/finance/dashboard')
+      return
+    }
+
+    // Office head check (only for non-Finance roles)
+    if (isDepartmentHead) {
+      console.log("[Dashboard] ✅ Office head detected, redirecting to dean dashboard")
       router.push('/dean/dashboard')
       return
     }
 
-    if (userRole === 'Finance Department' || userRole === 'Finance Officer' || userRole === 'Finance Office Head') {
-      console.log("[Dashboard] 💰 Finance detected, redirecting to finance dashboard")
-      router.push('/finance/dashboard')
+    if (userRole === 'Dean/Program Head' || userRole === 'Department Head') {
+      console.log("[Dashboard] 🏛️ Dean detected, redirecting to dean dashboard")
+      router.push('/dean/dashboard')
       return
     }
 
@@ -99,4 +99,5 @@ export default function DashboardPage() {
       </div>
     </div>
   )
+}
 }

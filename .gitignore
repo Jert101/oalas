@@ -39,6 +39,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # CSV exports and data dumps (never commit sensitive exports)
 csv_export_*/

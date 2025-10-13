@@ -12,7 +12,8 @@ import {
   FileText, 
   ArrowLeft,
   Clock,
-  CheckCircle
+  CheckCircle,
+  UserCheck
 } from "lucide-react"
 import { LeaveTypeSelection } from "./_components/LeaveTypeSelection"
 import { LeaveLimitsDisplay } from "./_components/LeaveLimitsDisplay"
@@ -34,7 +35,14 @@ interface LeaveLimit {
   }
 }
 
-
+interface LeaveBalance {
+  allowedDays: number
+  usedDays: number
+  remainingDays: number
+  leaveType: {
+    name: string
+  }
+}
 
 interface UserData {
   name: string
@@ -50,6 +58,7 @@ export default function DeanLeaveApplicationPage() {
   const [currentStep, setCurrentStep] = useState<ApplicationStep>('choice')
   const [selectedLeaveType, setSelectedLeaveType] = useState<LeaveType | null>(null)
   const [leaveLimits, setLeaveLimits] = useState<LeaveLimit | null>(null)
+  const [leaveBalance, setLeaveBalance] = useState<LeaveBalance | null>(null)
   const [userData, setUserData] = useState<UserData | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [canApply, setCanApply] = useState(true)
@@ -117,24 +126,27 @@ export default function DeanLeaveApplicationPage() {
     setIsLoading(true)
     
     try {
-      console.log(`Fetching data for leave type: ${leaveType.name} (ID: ${leaveType.leave_type_id})`)
+      console.log(`Dean fetching data for leave type: ${leaveType.name} (ID: ${leaveType.leave_type_id})`)
       
-      // For deans, we only need leave limits, not balance (since they have automatic approval)
-      const limitsResponse = await fetch(`/api/teacher/leave-limits?leaveTypeId=${leaveType.leave_type_id}`)
+      // Fetch leave limits and balance for the selected leave type
+      const [limitsResponse, balanceResponse] = await Promise.all([
+        fetch(`/api/dean/leave-limits?leaveTypeId=${leaveType.leave_type_id}`),
+        fetch(`/api/dean/leave-balance?leaveTypeId=${leaveType.leave_type_id}`)
+      ])
 
-      console.log(`Leave limits response status: ${limitsResponse.status}`)
+      let limitsData = null
+      let balanceData = null
+
+      console.log(`Dean leave limits response status: ${limitsResponse.status}`)
+      console.log(`Dean leave balance response status: ${balanceResponse.status}`)
 
       if (limitsResponse.ok) {
-        const limitsData = await limitsResponse.json()
+        limitsData = await limitsResponse.json()
         setLeaveLimits(limitsData.leaveLimit)
-        console.log('Leave limits data:', limitsData)
-        
-        // For deans, proceed directly to the form since they have automatic approval
-        setCurrentStep('leave-form')
+        console.log('Dean leave limits data:', limitsData)
       } else {
         const errorData = await limitsResponse.json()
-        console.error('Leave limits API error:', errorData)
-        console.error('Leave limits response status:', limitsResponse.status)
+        console.error('Dean leave limits API error:', errorData)
         
         // Handle authentication errors
         if (limitsResponse.status === 401) {
@@ -142,9 +154,58 @@ export default function DeanLeaveApplicationPage() {
           router.push('/login')
           return
         }
+      }
+
+      if (balanceResponse.ok) {
+        balanceData = await balanceResponse.json()
+        setLeaveBalance(balanceData.leaveBalance)
+        console.log('Dean leave balance data:', balanceData)
+      } else {
+        const errorText = await balanceResponse.text()
+        console.error('Dean leave balance API error:', errorText)
         
-        // Handle other errors
-        toast.error("Unable to load leave limits. Please try again.")
+        // Try to parse as JSON if possible
+        try {
+          const errorData = JSON.parse(errorText)
+          console.error('Dean leave balance API error (parsed):', errorData)
+          
+          // Handle authentication errors
+          if (balanceResponse.status === 401) {
+            toast.error("Authentication error. Please log in again.")
+            router.push('/login')
+            return
+          }
+          
+          // Handle specific error cases
+          if (errorData.error === "Leave balance not found") {
+            toast.error(`No leave balance found for ${leaveType.name}. Please contact administrator.`)
+            return
+          }
+          
+          if (errorData.error === "User not found") {
+            toast.error("User account not found. Please contact administrator.")
+            return
+          }
+          
+        } catch (e) {
+          console.error('Dean leave balance API error (raw text):', errorText)
+        }
+      }
+
+      // Only proceed if both APIs returned data successfully
+      if (limitsData?.leaveLimit && balanceData?.leaveBalance) {
+        setCurrentStep('leave-limits')
+      } else {
+        console.error('Failed to fetch leave data. Limits:', !!limitsData?.leaveLimit, 'Balance:', !!balanceData?.leaveBalance)
+        
+        // Provide more specific error messages
+        if (!limitsData?.leaveLimit && !balanceData?.leaveBalance) {
+          toast.error("Unable to load leave information. Please try again or contact administrator.")
+        } else if (!limitsData?.leaveLimit) {
+          toast.error("Unable to load leave limits. Please try again.")
+        } else if (!balanceData?.leaveBalance) {
+          toast.error("Unable to load leave balance. Please try again.")
+        }
       }
     } catch (error) {
       console.error('Error fetching leave data:', error)
@@ -162,12 +223,14 @@ export default function DeanLeaveApplicationPage() {
     setCurrentStep('choice')
     setSelectedLeaveType(null)
     setLeaveLimits(null)
+    setLeaveBalance(null)
   }
 
   const handleBackToLeaveTypes = () => {
     setCurrentStep('leave-types')
     setSelectedLeaveType(null)
     setLeaveLimits(null)
+    setLeaveBalance(null)
   }
 
   const handleBackToLimits = () => {
@@ -196,8 +259,9 @@ export default function DeanLeaveApplicationPage() {
       })
 
       if (response.ok) {
-        toast.success('Leave application submitted and automatically approved!')
-        router.push('/dean/leave/current')
+        const result = await response.json()
+        toast.success(result.message || 'Leave application submitted and automatically approved!')
+        router.push('/dean/dashboard')
       } else {
         const error = await response.json()
         console.error('Error submitting application:', error)
@@ -233,8 +297,9 @@ export default function DeanLeaveApplicationPage() {
       })
 
       if (response.ok) {
-        toast.success('Travel order submitted and automatically approved!')
-        router.push('/dean/leave/current')
+        const result = await response.json()
+        toast.success(result.message || 'Travel order submitted and automatically approved!')
+        router.push('/dean/dashboard')
       } else {
         const error = await response.json()
         console.error('Error submitting travel order:', error)
@@ -255,45 +320,56 @@ export default function DeanLeaveApplicationPage() {
   const renderStep = () => {
     switch (currentStep) {
       case 'choice':
-                 return (
-           <div className="space-y-6">
-             {/* Validation Error Message - At the Top */}
-             {!canApply && validationError && (
-               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                 <div className="flex items-center gap-2">
-                   <Clock className="h-5 w-5 text-red-600" />
-                   <h3 className="text-sm font-medium text-red-800">Cannot Apply for New Applications</h3>
-                 </div>
-                 <p className="mt-1 text-sm text-red-700">{validationError}</p>
-                 <div className="mt-3">
-                   <Button 
-                     variant="outline" 
-                     size="sm"
-                     onClick={() => router.push('/dean/leave')}
-                     className="text-red-700 border-red-300 hover:bg-red-100"
-                   >
-                     View Pending Applications
-                   </Button>
-                 </div>
-               </div>
-             )}
-             
-             <div className="text-center">
-               <h1 className="text-3xl font-bold tracking-tight">Apply for Leave or Travel</h1>
-               <p className="text-muted-foreground mt-2">
-                 Choose the type of application you want to submit. Your application will be automatically approved.
-               </p>
-             </div>
+        return (
+          <div className="space-y-6">
+            {/* Dean Auto-Approval Notice */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center gap-2">
+                <UserCheck className="h-5 w-5 text-blue-600" />
+                <h3 className="text-sm font-medium text-blue-800">Dean Auto-Approval</h3>
+              </div>
+              <p className="mt-1 text-sm text-blue-700">
+                As a Dean/Program Head, your applications will be automatically approved upon submission.
+              </p>
+            </div>
 
-                         <div className="grid gap-6 md:grid-cols-2 max-w-4xl mx-auto">
-               <Card 
-                 className={`transition-shadow ${
-                   canApply 
-                     ? 'cursor-pointer hover:shadow-lg' 
-                     : 'cursor-not-allowed opacity-60'
-                 }`} 
-                 onClick={canApply ? handleLeaveApplicationChoice : undefined}
-               >
+            {/* Validation Error Message */}
+            {!canApply && validationError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-red-600" />
+                  <h3 className="text-sm font-medium text-red-800">Cannot Apply for New Applications</h3>
+                </div>
+                <p className="mt-1 text-sm text-red-700">{validationError}</p>
+                <div className="mt-3">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => router.push('/dean/leave')}
+                    className="text-red-700 border-red-300 hover:bg-red-100"
+                  >
+                    View Pending Applications
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            <div className="text-center">
+              <h1 className="text-3xl font-bold tracking-tight">Apply for Leave or Travel</h1>
+              <p className="text-muted-foreground mt-2">
+                Choose the type of application you want to submit
+              </p>
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2 max-w-4xl mx-auto">
+              <Card 
+                className={`transition-shadow ${
+                  canApply 
+                    ? 'cursor-pointer hover:shadow-lg' 
+                    : 'cursor-not-allowed opacity-60'
+                }`} 
+                onClick={canApply ? handleLeaveApplicationChoice : undefined}
+              >
                 <CardHeader className="text-center">
                   <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
                     <Calendar className="h-6 w-6 text-blue-600" />
@@ -321,18 +397,22 @@ export default function DeanLeaveApplicationPage() {
                       <CheckCircle className="h-4 w-4 text-green-500" />
                       <span>Emergency Leave</span>
                     </div>
+                    <div className="flex items-center gap-2">
+                      <UserCheck className="h-4 w-4 text-blue-500" />
+                      <span className="text-blue-600 font-medium">Auto-Approved</span>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
 
-                             <Card 
-                 className={`transition-shadow ${
-                   canApply 
-                     ? 'cursor-pointer hover:shadow-lg' 
-                     : 'cursor-not-allowed opacity-60'
-                 }`} 
-                 onClick={canApply ? handleTravelOrderChoice : undefined}
-               >
+              <Card 
+                className={`transition-shadow ${
+                  canApply 
+                    ? 'cursor-pointer hover:shadow-lg' 
+                    : 'cursor-not-allowed opacity-60'
+                }`} 
+                onClick={canApply ? handleTravelOrderChoice : undefined}
+              >
                 <CardHeader className="text-center">
                   <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
                     <Plane className="h-6 w-6 text-green-600" />
@@ -360,6 +440,10 @@ export default function DeanLeaveApplicationPage() {
                       <CheckCircle className="h-4 w-4 text-green-500" />
                       <span>Training Programs</span>
                     </div>
+                    <div className="flex items-center gap-2">
+                      <UserCheck className="h-4 w-4 text-blue-500" />
+                      <span className="text-blue-600 font-medium">Auto-Approved</span>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -377,20 +461,32 @@ export default function DeanLeaveApplicationPage() {
         )
       
       case 'leave-limits':
-        // For deans, skip this step and go directly to form
-        return null
+        return (
+          <LeaveLimitsDisplay
+            leaveType={selectedLeaveType}
+            leaveLimit={leaveLimits}
+            leaveBalance={leaveBalance}
+            userData={userData}
+            onProceed={handleProceedToForm}
+            onBack={handleBackToLeaveTypes}
+            isLoading={isLoading}
+            isDean={true}
+          />
+        )
       
       case 'leave-form':
-                 return (
-           <LeaveApplicationForm
-             leaveType={selectedLeaveType}
-             leaveLimit={leaveLimits}
-             userData={userData}
-             onSubmit={handleFormSubmit}
-             onBack={handleBackToLeaveTypes}
-             isLoading={isLoading}
-           />
-         )
+        return (
+          <LeaveApplicationForm
+            leaveType={selectedLeaveType}
+            leaveLimit={leaveLimits}
+            leaveBalance={leaveBalance}
+            userData={userData}
+            onSubmit={handleFormSubmit}
+            onBack={handleBackToLimits}
+            isLoading={isLoading}
+            isDean={true}
+          />
+        )
       
       case 'travel-form':
         return (
@@ -399,6 +495,7 @@ export default function DeanLeaveApplicationPage() {
             onSubmit={handleTravelOrderSubmit}
             onBack={handleBackToChoice}
             isLoading={isLoading}
+            isDean={true}
           />
         )
       
@@ -412,25 +509,27 @@ export default function DeanLeaveApplicationPage() {
       <div className="max-w-4xl mx-auto px-4">
         {/* Header */}
         <div className="mb-8">
-                     <Button
-             variant="ghost"
-             onClick={() => router.push('/dean/leave')}
-             className="mb-4"
-           >
-             <ArrowLeft className="h-4 w-4 mr-2" />
-             Back to Leave Management
-           </Button>
+          <Button
+            variant="ghost"
+            onClick={() => router.push('/dean/leave')}
+            className="mb-4"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Leave Management
+          </Button>
           
           {currentStep !== 'choice' && (
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-bold">
                   {currentStep === 'leave-types' && 'Select Leave Type'}
+                  {currentStep === 'leave-limits' && 'Review Leave Limits'}
                   {currentStep === 'leave-form' && 'Complete Leave Application'}
                   {currentStep === 'travel-form' && 'Travel Order Application'}
                 </h1>
                 <p className="text-gray-600 mt-2">
                   {currentStep === 'leave-types' && 'Choose the type of leave you want to apply for'}
+                  {currentStep === 'leave-limits' && 'Review your leave limits and balance'}
                   {currentStep === 'leave-form' && 'Fill out your leave application details'}
                   {currentStep === 'travel-form' && 'Fill out your travel order details'}
                 </p>
@@ -440,6 +539,7 @@ export default function DeanLeaveApplicationPage() {
               {currentStep !== 'travel-form' && (
                 <div className="flex items-center space-x-2">
                   <div className={`w-3 h-3 rounded-full ${currentStep === 'leave-types' ? 'bg-blue-600' : 'bg-gray-300'}`} />
+                  <div className={`w-3 h-3 rounded-full ${currentStep === 'leave-limits' ? 'bg-blue-600' : 'bg-gray-300'}`} />
                   <div className={`w-3 h-3 rounded-full ${currentStep === 'leave-form' ? 'bg-blue-600' : 'bg-gray-300'}`} />
                 </div>
               )}

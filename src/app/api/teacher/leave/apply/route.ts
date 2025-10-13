@@ -73,7 +73,8 @@ export async function POST(request: NextRequest) {
         numberOfDays: numberOfDays,
         hours: hours,
         specificPurpose: specificPurpose || null,
-        descriptionOfSickness: descriptionOfSickness || null
+        descriptionOfSickness: descriptionOfSickness || null,
+        medicalProof: medicalProof || null
       }
     })
 

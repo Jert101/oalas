@@ -38,15 +38,18 @@ export default function NotificationBell() {
     // Load initial notifications
     loadNotifications()
     
-    // Set up periodic refresh as fallback (every 30 seconds)
+    // Set up periodic refresh as fallback (every 60 seconds - reduced frequency)
     const refreshInterval = setInterval(() => {
-      loadNotifications()
-    }, 30000)
+      // Only refresh if tab is visible and WebSocket is not connected
+      if (!document.hidden && !isConnected) {
+        loadNotifications()
+      }
+    }, 60000)
     
     return () => {
       if (refreshInterval) clearInterval(refreshInterval)
     }
-  }, [])
+  }, [isConnected])
 
   // Update notifications when real-time data comes in
   useEffect(() => {

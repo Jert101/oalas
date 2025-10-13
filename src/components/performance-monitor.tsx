@@ -76,12 +76,12 @@ export function PerformanceMonitor() {
       }
     }
 
-    // Set up performance monitoring
+    // Set up performance monitoring (reduced frequency)
     const interval = setInterval(() => {
       measureMemory()
       measureNetworkSpeed()
       checkServiceWorker()
-    }, 10000) // Check every 10 seconds
+    }, 30000) // Check every 30 seconds (reduced from 10s)
 
     // Initial measurements
     measurePageLoad()

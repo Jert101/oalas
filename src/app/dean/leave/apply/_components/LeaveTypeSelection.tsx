@@ -11,8 +11,10 @@ import {
   AlertTriangle, 
   Clock,
   ArrowLeft,
-  Loader2
+  Loader2,
+  UserCheck
 } from "lucide-react"
+import { toast } from "sonner"
 
 interface LeaveType {
   leave_type_id: number
@@ -53,17 +55,17 @@ export function LeaveTypeSelection({ onSelect, onBack, isLoading }: LeaveTypeSel
   const fetchLeaveTypes = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/teacher/leave-types')
+      const response = await fetch('/api/leave-types', { cache: 'no-store' })
       if (response.ok) {
         const data = await response.json()
-        // Get first 5 leave types (excluding Travel Order)
-        const filteredTypes = data.leave_types
-          .filter((type: LeaveType) => type.name !== 'Travel Order')
-          .slice(0, 5)
-        setLeaveTypes(filteredTypes)
+        // Display all leave types returned by the API (no filtering)
+        setLeaveTypes(Array.isArray(data) ? data : (data.leave_types || []))
+      } else {
+        toast.error('Failed to load leave types')
       }
     } catch (error) {
       console.error('Error fetching leave types:', error)
+      toast.error('Failed to load leave types')
     } finally {
       setLoading(false)
     }
@@ -118,7 +120,11 @@ export function LeaveTypeSelection({ onSelect, onBack, isLoading }: LeaveTypeSel
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="flex justify-center">
+                <div className="flex flex-col items-center space-y-2">
+                  <Badge variant="outline" className="text-xs">
+                    <UserCheck className="h-3 w-3 mr-1" />
+                    Auto-Approved
+                  </Badge>
                   <Badge variant="outline" className="text-xs">
                     Click to select
                   </Badge>

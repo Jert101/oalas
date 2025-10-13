@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useEffect, useState } from "react"
+import { useSession } from "next-auth/react"
 import { 
   Users, 
   UserCheck, 
@@ -34,20 +35,41 @@ interface FacultyMember {
 export default function DeanFacultyPage() {
   const [faculty, setFaculty] = useState<FacultyMember[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const { data: session, status } = useSession()
 
   useEffect(() => {
     const loadFaculty = async () => {
       try {
+        console.log('🔍 Loading faculty data...')
+        console.log('👤 Current session:', {
+          status,
+          hasSession: !!session,
+          userEmail: session?.user?.email,
+          userRole: (session?.user as any)?.role,
+          userId: session?.user?.id
+        })
         const res = await fetch('/api/dean/faculty')
-        if (!res.ok) throw new Error('Failed to load faculty')
+        console.log('📡 API Response status:', res.status)
+        
+        if (!res.ok) {
+          const errorText = await res.text()
+          console.error('❌ API Error Response:', errorText)
+          throw new Error(`Failed to load faculty: ${res.status}`)
+        }
+        
         const data = await res.json()
+        console.log('📊 API Response data:', data)
+        
         if (data.success) {
-          setFaculty(data.data.faculty)
+          console.log('✅ Faculty data loaded:', data.data.faculty?.length || 0, 'members')
+          console.log('🏢 Department:', data.data.department)
+          console.log('👤 User Role:', data.data.userRole)
+          setFaculty(data.data.faculty || [])
         } else {
-          console.error('API returned error:', data.error)
+          console.error('❌ API returned error:', data.error)
         }
       } catch (error) {
-        console.error('Error loading faculty:', error)
+        console.error('❌ Error loading faculty:', error)
       } finally {
         setIsLoading(false)
       }
@@ -187,6 +209,13 @@ export default function DeanFacultyPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {(() => {
+            console.log('🎨 Rendering faculty list:', {
+              facultyCount: faculty.length,
+              faculty: faculty.map(f => ({ name: f.name, email: f.email, role: f.role?.name }))
+            })
+            return null
+          })()}
           {faculty.length === 0 ? (
             <div className="text-center py-8">
               <Users className="mx-auto h-12 w-12 text-gray-400" />
@@ -194,6 +223,19 @@ export default function DeanFacultyPage() {
               <p className="mt-1 text-sm text-gray-500">
                 No faculty members are currently assigned to your department.
               </p>
+              <div className="mt-4 p-4 bg-gray-100 rounded-lg text-left">
+                <p className="text-sm text-gray-600">
+                  <strong>Debug Info:</strong><br/>
+                  Faculty array length: {faculty.length}<br/>
+                  Loading state: {isLoading ? 'Yes' : 'No'}<br/>
+                  <br/>
+                  <strong>Session Info:</strong><br/>
+                  Status: {status}<br/>
+                  Email: {session?.user?.email || 'None'}<br/>
+                  Role: {(session?.user as any)?.role || 'None'}<br/>
+                  User ID: {session?.user?.id || 'None'}
+                </p>
+              </div>
             </div>
           ) : (
             <div className="space-y-4">

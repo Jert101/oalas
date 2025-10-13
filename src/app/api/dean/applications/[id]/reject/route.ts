@@ -76,8 +76,9 @@ export async function POST(
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    // Verify user is a Dean/Program Head
-    if (user.role?.name !== "Dean/Program Head") {
+    // Verify user is a Dean/Program Head or Department Head
+    const allowedRoles = ["Dean/Program Head", "Department Head"]
+    if (!allowedRoles.includes(user.role?.name || "")) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 })
     }
 
@@ -107,9 +108,11 @@ export async function POST(
             name: true,
             email: true,
             users_id: true,
+            department_id: true,
             department: {
               select: {
-                name: true
+                name: true,
+                department_id: true
               }
             }
           }
@@ -122,8 +125,53 @@ export async function POST(
     }
 
     // Verify the application belongs to a faculty member in the dean's department
-    if (application.user.department?.name !== user.department?.name) {
-      return NextResponse.json({ error: "Access denied - Application not in your department" }, { status: 403 })
+    console.log('🔍 Department comparison (reject):', {
+      currentUserDepartment: user.department?.name,
+      currentUserDepartmentId: user.department_id,
+      currentUserDepartmentObject: user.department,
+      applicantDepartment: application.user.department?.name,
+      applicantDepartmentId: application.user.department_id,
+      applicantDepartmentObject: application.user.department,
+      departmentsMatch: application.user.department?.name === user.department?.name,
+      departmentIdsMatch: application.user.department_id === user.department_id,
+      currentUserRole: user.role?.name,
+      currentUserEmail: user.email
+    })
+    
+    // Check if any department data is null/undefined
+    if (!user.department || !application.user.department) {
+      console.log('❌ Missing department data (reject):', {
+        currentUserHasDepartment: !!user.department,
+        applicantHasDepartment: !!application.user.department,
+        currentUserDepartmentId: user.department_id,
+        applicantDepartmentId: application.user.department_id
+      })
+      
+      // Fallback to department_id comparison only
+      if (user.department_id && application.user.department_id && 
+          user.department_id === application.user.department_id) {
+        console.log('✅ Department ID match - Access granted (fallback)')
+      } else {
+        console.log('❌ Department ID mismatch - Access denied')
+        return NextResponse.json({ error: "Access denied - Application not in your department" }, { status: 403 })
+      }
+    } else {
+      // Check both department name and department_id for comparison
+      const departmentNamesMatch = application.user.department?.name === user.department?.name
+      const departmentIdsMatch = application.user.department_id === user.department_id
+      
+      console.log('🔍 Detailed comparison (reject):', {
+        departmentNamesMatch,
+        departmentIdsMatch,
+        fallbackCheck: application.user.department_id === user.department_id
+      })
+      
+      if (!departmentNamesMatch && !departmentIdsMatch) {
+        console.log('❌ Department mismatch - Access denied')
+        return NextResponse.json({ error: "Access denied - Application not in your department" }, { status: 403 })
+      }
+      
+      console.log('✅ Department match - Access granted')
     }
 
     // Check if application is in PENDING status

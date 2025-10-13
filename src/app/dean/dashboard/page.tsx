@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
+import { DataTable } from "@/components/data-table"
 import { 
   Calendar, 
   FileText, 
@@ -15,22 +17,75 @@ import {
   ArrowRight
 } from "lucide-react"
 
+import dashboardData from "../../dashboard/data.json"
+
 interface DashboardStats {
   pendingApplications: number
   approvedApplications: number
   deniedApplications: number
-  totalFaculty: number
+  totalApplications: number
+  facultyMembers: number
+  departmentName: string
+  recentApplications: Array<{
+    id: number
+    userName: string
+    userEmail: string
+    leaveType: string
+    status: string
+    startDate: string
+    endDate: string
+    createdAt: string
+  }>
 }
 
 export default function DeanDashboardPage() {
+  const { data: session, status } = useSession()
   const [stats, setStats] = useState<DashboardStats>({
     pendingApplications: 0,
     approvedApplications: 0,
     deniedApplications: 0,
-    totalFaculty: 0
+    totalApplications: 0,
+    facultyMembers: 0,
+    departmentName: "",
+    recentApplications: []
   })
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
+
+  // Redirect non-dean users
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/")
+      return
+    }
+    
+    if (status === "loading") {
+      return // Wait for session to load
+    }
+    
+    // Allow Dean/Program Head, Department Head, and office heads (isDepartmentHead = true)
+    const userRole = session?.user?.role
+    const isDepartmentHead = (session?.user as any)?.isDepartmentHead
+    
+    const allowedRoles = ["Dean/Program Head", "Department Head", "Admin"]
+    const isAllowedRole = allowedRoles.includes(userRole || "")
+    const isOfficeHead = isDepartmentHead === true
+    
+    console.log("[DeanDashboard] Access check:", {
+      userRole,
+      isDepartmentHead,
+      isAllowedRole,
+      isOfficeHead,
+      shouldAllow: isAllowedRole || isOfficeHead
+    })
+    
+    if (!isAllowedRole && !isOfficeHead) {
+      console.log("[DeanDashboard] Access denied, redirecting to main dashboard")
+      router.push("/dashboard")
+    } else {
+      console.log("[DeanDashboard] Access granted for:", userRole)
+    }
+  }, [session, status, router])
 
   useEffect(() => {
     const loadStats = async () => {
@@ -53,10 +108,20 @@ export default function DeanDashboardPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    )
-  }
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600">      </div>
+
+      {/* Role-based Data Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Dean Management Overview</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <DataTable data={dashboardData.dean} />
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
 
   return (
     <div className="space-y-6">
@@ -127,7 +192,7 @@ export default function DeanDashboardPage() {
             <Users className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalFaculty}</div>
+            <div className="text-2xl font-bold">{stats.facultyMembers}</div>
             <p className="text-xs text-muted-foreground">
               In your department
             </p>

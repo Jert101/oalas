@@ -17,8 +17,8 @@ interface RealtimeCallback {
 class RealtimeClient {
   private ws: WebSocket | null = null
   private reconnectAttempts = 0
-  private maxReconnectAttempts = 10
-  private reconnectDelay = 1000
+  private maxReconnectAttempts = 3  // Reduced from 10 to 3
+  private reconnectDelay = 2000     // Increased from 1000ms to 2000ms
   private isConnecting = false
   private callbacks: Map<string, RealtimeCallback> = new Map()
   private userId: string | null = null

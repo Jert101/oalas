@@ -27,8 +27,9 @@ export async function GET(
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    // Verify user is a Dean/Program Head
-    if (user.role?.name !== "Dean/Program Head") {
+    // Allow both Dean/Program Head and Department Head to access application details
+    const allowedRoles = ["Dean/Program Head", "Department Head"]
+    if (!allowedRoles.includes(user.role?.name || "")) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 })
     }
 
@@ -47,11 +48,14 @@ export async function GET(
       include: {
         user: {
           select: {
+            users_id: true,
             name: true,
             email: true,
             profilePicture: true,
+            department_id: true,
             department: {
               select: {
+                department_id: true,
                 name: true
               }
             }
@@ -74,18 +78,28 @@ export async function GET(
     })
 
     // Get leave type information
-    const leaveType = await prisma.leave_types.findUnique({
+    const leaveType = application ? await prisma.leave_types.findUnique({
       where: {
-        leave_type_id: application?.leave_type_id
+        leave_type_id: application.leave_type_id
+      },
+      select: {
+        leave_type_id: true,
+        name: true,
+        description: true
       }
-    })
+    }) : null
 
     if (!application) {
       return NextResponse.json({ error: "Application not found" }, { status: 404 })
     }
 
     // Verify the application belongs to a faculty member in the dean's department
-    if (application.user.department?.name !== user.department?.name) {
+    const deanDeptId = user.department_id
+    const applicantDeptId = (application.user as any)?.department_id ?? application.user.department?.department_id
+
+    console.log('🔎 Department check', { deanDeptId, applicantDeptId, deanEmail: user.email, applicantEmail: application.user.email })
+
+    if (!deanDeptId || !applicantDeptId || deanDeptId !== applicantDeptId) {
       return NextResponse.json({ error: "Access denied - Application not in your department" }, { status: 403 })
     }
 

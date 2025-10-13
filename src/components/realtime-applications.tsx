@@ -210,7 +210,19 @@ export function RealtimeApplications() {
                 <div className="flex items-start justify-between">
                   <div className="flex items-start space-x-4">
                     <Avatar className="h-12 w-12">
-                      <AvatarImage src={application.user.profilePicture} />
+                      <AvatarImage 
+                        src={application.user.profilePicture} 
+                        onError={(e) => {
+                          console.warn("[RealtimeApplications] Failed to load avatar:", application.user.profilePicture, e)
+                          const img = e.target as HTMLImageElement
+                          if (img.src !== '/ckcm.png') {
+                            img.src = '/ckcm.png'
+                          }
+                        }}
+                        onLoad={() => {
+                          console.log("[RealtimeApplications] Successfully loaded avatar:", application.user.profilePicture)
+                        }}
+                      />
                       <AvatarFallback>
                         {getInitials(application.user.name)}
                       </AvatarFallback>
@@ -302,4 +314,11 @@ export function RealtimeApplications() {
     </div>
   )
 }
+
+
+
+
+
+
+
 

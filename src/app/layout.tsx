@@ -6,6 +6,8 @@ import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
 import { RealtimeProvider } from "@/components/realtime-provider";
 
+export const dynamic = 'force-dynamic'
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],

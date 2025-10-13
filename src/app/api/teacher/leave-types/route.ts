@@ -11,22 +11,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Get leave types (excluding Travel Order)
+    // Get all leave types from the database
     const leaveTypes = await prisma.leave_types.findMany({
-      where: {
-        name: {
-          not: 'Travel Order'
-        }
-      },
       orderBy: {
         name: 'asc'
-      },
-      take: 5
+      }
     })
 
-    return NextResponse.json({
-      leave_types: leaveTypes
-    })
+    console.log('[teacher/leave-types] Count:', leaveTypes.length, 'Time:', new Date().toISOString())
+
+    return NextResponse.json(
+      { leave_types: leaveTypes },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      }
+    )
 
   } catch (error) {
     console.error('Error fetching leave types:', error)

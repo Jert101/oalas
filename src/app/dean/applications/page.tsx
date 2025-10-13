@@ -65,14 +65,28 @@ export default function DeanApplicationsPage() {
   useEffect(() => {
     const loadApplications = async () => {
       try {
+        console.log('🔍 Loading applications data...')
         const res = await fetch('/api/dean/applications')
-        if (!res.ok) throw new Error('Failed to load applications')
+        console.log('📡 API Response status:', res.status)
+        
+        if (!res.ok) {
+          const errorText = await res.text()
+          console.error('❌ API Error Response:', errorText)
+          throw new Error(`Failed to load applications: ${res.status}`)
+        }
+        
         const data = await res.json()
+        console.log('📊 API Response data:', data)
+        
         if (data.success) {
+          console.log('✅ Applications data loaded:', data.data.applications?.length || 0, 'applications')
+          console.log('🏢 Department:', data.data.deanDepartment)
           setApplicationsData(data.data)
+        } else {
+          console.error('❌ API returned error:', data.error)
         }
       } catch (error) {
-        console.error('Error loading applications:', error)
+        console.error('❌ Error loading applications:', error)
       } finally {
         setIsLoading(false)
       }
@@ -170,6 +184,14 @@ export default function DeanApplicationsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {(() => {
+            console.log('🎨 Rendering applications list:', {
+              hasApplicationsData: !!applicationsData,
+              applicationsCount: applicationsData?.applications?.length || 0,
+              department: applicationsData?.deanDepartment
+            })
+            return null
+          })()}
           {!applicationsData || applicationsData.applications.length === 0 ? (
             <div className="text-center py-8">
               <FileText className="mx-auto h-12 w-12 text-gray-400" />
@@ -177,6 +199,15 @@ export default function DeanApplicationsPage() {
               <p className="mt-1 text-sm text-gray-500">
                 No leave applications have been submitted from your department faculty yet.
               </p>
+              <div className="mt-4 p-4 bg-gray-100 rounded-lg text-left">
+                <p className="text-sm text-gray-600">
+                  <strong>Debug Info:</strong><br/>
+                  Has applications data: {applicationsData ? 'Yes' : 'No'}<br/>
+                  Applications count: {applicationsData?.applications?.length || 0}<br/>
+                  Department: {applicationsData?.deanDepartment || 'None'}<br/>
+                  Loading state: {isLoading ? 'Yes' : 'No'}
+                </p>
+              </div>
             </div>
           ) : (
             <div className="space-y-4">
@@ -187,7 +218,16 @@ export default function DeanApplicationsPage() {
                 >
                   <div className="flex items-center space-x-4">
                     <Avatar className="h-10 w-10">
-                      <AvatarImage src={application.user.profilePicture || '/ckcm.png'} alt={application.user.name} />
+                      <AvatarImage 
+                        src={application.user.profilePicture || '/ckcm.png'} 
+                        alt={application.user.name}
+                        onError={(e) => {
+                          const img = e.target as HTMLImageElement
+                          if (img.src !== '/ckcm.png') {
+                            img.src = '/ckcm.png'
+                          }
+                        }}
+                      />
                       <AvatarFallback>{application.user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                     </Avatar>
                     <div>

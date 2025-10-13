@@ -53,6 +53,23 @@ export default function TeacherDashboardPage() {
 
 
   useEffect(() => {
+    // Force session refresh to ensure we have the latest user data
+    const refreshSession = async () => {
+      try {
+        console.log("[TeacherDashboard] Refreshing session data...")
+        const response = await fetch('/api/auth/session', { 
+          method: 'GET',
+          cache: 'no-store'
+        })
+        if (response.ok) {
+          console.log("[TeacherDashboard] Session refreshed successfully")
+        }
+      } catch (error) {
+        console.warn("[TeacherDashboard] Failed to refresh session:", error)
+      }
+    }
+    
+    refreshSession()
     fetchDashboardData()
   }, [])
 

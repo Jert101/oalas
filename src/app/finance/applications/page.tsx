@@ -283,7 +283,16 @@ export default function FinanceApplicationsPage() {
                 >
                   <div className="flex items-start space-x-4 flex-1">
                     <Avatar className="h-10 w-10 flex-shrink-0">
-                      <AvatarImage src={application.user.profilePicture || '/ckcm.png'} alt={application.user.name} />
+                      <AvatarImage 
+                        src={application.user.profilePicture || '/ckcm.png'} 
+                        alt={application.user.name}
+                        onError={(e) => {
+                          const img = e.target as HTMLImageElement
+                          if (img.src !== '/ckcm.png') {
+                            img.src = '/ckcm.png'
+                          }
+                        }}
+                      />
                       <AvatarFallback>{application.user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">

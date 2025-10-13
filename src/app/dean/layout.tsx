@@ -23,9 +23,34 @@ export default function DeanLayout({ children }: DeanLayoutProps) {
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login")
-    } else if (session?.user?.role !== "Dean/Program Head") {
+      return
+    }
+    
+    if (status === "loading") {
+      return // Wait for session to load
+    }
+    
+    // Allow Dean/Program Head, Department Head, Admin, and office heads (isDepartmentHead = true)
+    const userRole = session?.user?.role
+    const isDepartmentHead = (session?.user as any)?.isDepartmentHead
+    
+    const allowedRoles = ["Dean/Program Head", "Department Head", "Admin"]
+    const isAllowedRole = allowedRoles.includes(userRole || "")
+    const isOfficeHead = isDepartmentHead === true
+    
+    console.log("[DeanLayout] Access check:", {
+      userRole,
+      isDepartmentHead,
+      isAllowedRole,
+      isOfficeHead,
+      shouldAllow: isAllowedRole || isOfficeHead
+    })
+    
+    if (!isAllowedRole && !isOfficeHead) {
+      console.log("[DeanLayout] Access denied, redirecting to main dashboard")
       router.push("/dashboard")
     } else {
+      console.log("[DeanLayout] Access granted for:", userRole)
       setIsLoading(false)
     }
   }, [status, session, router])
@@ -41,7 +66,18 @@ export default function DeanLayout({ children }: DeanLayoutProps) {
     )
   }
 
-  if (!session || session.user.role !== "Dean/Program Head") {
+  // Double-check access control
+  if (!session) {
+    return null
+  }
+  
+  const userRole = session?.user?.role
+  const isDepartmentHead = (session?.user as any)?.isDepartmentHead
+  const allowedRoles = ["Dean/Program Head", "Department Head", "Admin"]
+  const isAllowedRole = allowedRoles.includes(userRole || "")
+  const isOfficeHead = isDepartmentHead === true
+  
+  if (!isAllowedRole && !isOfficeHead) {
     return null
   }
 

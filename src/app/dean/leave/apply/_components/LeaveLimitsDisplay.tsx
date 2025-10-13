@@ -14,7 +14,8 @@ import {
   ArrowRight,
   User,
   Building,
-  Award
+  Award,
+  UserCheck
 } from "lucide-react"
 
 interface LeaveType {
@@ -64,6 +65,7 @@ interface LeaveLimitsDisplayProps {
   onProceed: () => void
   onBack: () => void
   isLoading: boolean
+  isDean?: boolean
 }
 
 export function LeaveLimitsDisplay({ 
@@ -73,7 +75,8 @@ export function LeaveLimitsDisplay({
   userData, 
   onProceed, 
   onBack, 
-  isLoading 
+  isLoading,
+  isDean = false
 }: LeaveLimitsDisplayProps) {
   const [currentPeriod, setCurrentPeriod] = useState<CurrentPeriod | null>(null)
   const [periodLoading, setPeriodLoading] = useState(true)
@@ -136,6 +139,19 @@ export function LeaveLimitsDisplay({
           Review your leave allocation for {leaveType.name}
         </p>
       </div>
+
+      {/* Dean Auto-Approval Notice */}
+      {isDean && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center gap-2">
+            <UserCheck className="h-5 w-5 text-blue-600" />
+            <h3 className="text-sm font-medium text-blue-800">Auto-Approval Notice</h3>
+          </div>
+          <p className="mt-1 text-sm text-blue-700">
+            As a Dean/Program Head, your leave application will be automatically approved upon submission.
+          </p>
+        </div>
+      )}
 
       {/* User Information */}
       <Card>
@@ -295,7 +311,7 @@ export function LeaveLimitsDisplay({
           onClick={onProceed}
           disabled={isLoading}
         >
-          Proceed to Application
+          {isDean ? 'Proceed with Auto-Approval' : 'Proceed to Application'}
           <ArrowRight className="h-4 w-4 ml-2" />
         </Button>
       </div>

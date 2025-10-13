@@ -132,7 +132,15 @@ export function AdminRecentActivity() {
             {activities.map((activity) => (
               <div key={activity.id} className="flex items-start space-x-4 pb-4 border-b border-gray-100 last:border-b-0">
                 <Avatar className="size-10">
-                  <AvatarImage src={activity.user?.profilePicture || "/ckcm.png"} />
+                  <AvatarImage 
+                    src={activity.user?.profilePicture || "/ckcm.png"}
+                    onError={(e) => {
+                      const img = e.target as HTMLImageElement
+                      if (img.src !== '/ckcm.png') {
+                        img.src = '/ckcm.png'
+                      }
+                    }}
+                  />
                   <AvatarFallback>
                     {activity.user?.name?.split(' ').map(n => n[0]).join('') || 'U'}
                   </AvatarFallback>

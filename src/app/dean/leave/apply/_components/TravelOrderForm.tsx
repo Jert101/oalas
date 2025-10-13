@@ -18,7 +18,8 @@ import {
   ArrowLeft,
   Upload,
   Loader2,
-  Calculator
+  Calculator,
+  UserCheck
 } from "lucide-react"
 import { toast } from "sonner"
 import DateValidation from "@/components/date-validation"
@@ -40,6 +41,7 @@ interface TravelOrderFormProps {
   }) => void
   onBack: () => void
   isLoading: boolean
+  isDean?: boolean
 }
 
 // Travel Order Schema
@@ -60,7 +62,8 @@ export function TravelOrderForm({
   userData, 
   onSubmit, 
   onBack, 
-  isLoading 
+  isLoading,
+  isDean = false
 }: TravelOrderFormProps) {
   const [totalCashRequested, setTotalCashRequested] = useState(0)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -139,6 +142,19 @@ export function TravelOrderForm({
           Complete your travel order request
         </p>
       </div>
+
+      {/* Dean Auto-Approval Notice */}
+      {isDean && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center gap-2">
+            <UserCheck className="h-5 w-5 text-blue-600" />
+            <h3 className="text-sm font-medium text-blue-800">Auto-Approval Notice</h3>
+          </div>
+          <p className="mt-1 text-sm text-blue-700">
+            As a Dean/Program Head, your travel order will be automatically approved upon submission.
+          </p>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
         {/* Employee Information */}
@@ -439,7 +455,7 @@ export function TravelOrderForm({
                 Submitting...
               </>
             ) : (
-              'Submit Travel Order'
+              isDean ? 'Submit & Auto-Approve Travel Order' : 'Submit Travel Order'
             )}
           </Button>
         </div>
@@ -447,9 +463,3 @@ export function TravelOrderForm({
     </div>
   )
 }
-
-
-
-
-
-

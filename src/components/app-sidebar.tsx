@@ -13,10 +13,13 @@ import {
   IconFileText,
 } from "@tabler/icons-react"
 import { useSession } from "next-auth/react"
+import { useEffect, useState } from "react"
+import { fetchGoogleProfilePicture } from "@/lib/google"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 
 import { NavUser } from "@/components/nav-user"
+import GoogleAvatar from "./GoogleAvatar"
 import {
   Sidebar,
   SidebarContent,
@@ -31,7 +34,7 @@ import {
 const adminNavigationItems = [
   {
     title: "Admin Dashboard",
-    url: "/admin/console",
+    url: "/admin/dashboard",
     icon: IconDashboard,
   },
   {
@@ -63,6 +66,11 @@ const adminNavigationItems = [
     title: "Leave Types",
     url: "/admin/leave-types",
     icon: IconSettings,
+  },
+  {
+    title: "Term Types",
+    url: "/admin/term-types",
+    icon: IconCalendarPlus,
   },
   {
     title: "Departments",
@@ -110,15 +118,61 @@ const commonNavigationItems: any[] = []
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: session } = useSession()
   const router = useRouter()
+  const [avatarUrl, setAvatarUrl] = useState<string>("")
   
+  const getAvatarUrl = (raw?: string | null, fallbackName?: string) => {
+    // If it looks URL-encoded, safely decode once or twice if needed
+    let url = raw || ""
+    if (url.includes("%")) {
+      try { 
+        url = decodeURIComponent(url)
+        // Check if it's still encoded (double encoding)
+        if (url.includes("%")) {
+          url = decodeURIComponent(url)
+        }
+        console.log("[AppSidebar] Decoded URL:", { original: raw, decoded: url })
+      } catch (e) {
+        console.warn("[AppSidebar] Failed to decode URL:", raw, e)
+        url = raw || ""
+      }
+    }
+    
+    // Ensure URL is valid
+    if (url && (url.startsWith('http') || url.startsWith('/'))) {
+      console.log("[AppSidebar] Using profile picture:", url)
+      return url
+    }
+    
+    console.log("[AppSidebar] Using fallback picture for:", fallbackName)
+    return '/ckcm.png'
+  }
+
   const userData = {
     name: session?.user?.name || "User",
     email: session?.user?.email || "user@example.com", 
-    avatar: session?.user?.profilePicture?.startsWith('/') 
-      ? session?.user?.profilePicture 
-      : `/${session?.user?.profilePicture || 'ckcm.png'}`,
-    userId: session?.user?.id || "N/A", // This is now the custom format
+    avatar: '/ckcm.png', // GoogleAvatar will handle the real avatar fetching
+    userId: (session?.user as any)?.userId || (session?.user as any)?.users_id || session?.user?.id || "N/A", // Try multiple sources for userId
   }
+  
+  // Debug logging for user data
+  console.log("[AppSidebar] Session data:", {
+    sessionUser: session?.user,
+    userId: userData.userId,
+    profilePicture: (session?.user as any)?.profilePicture,
+    role: (session?.user as any)?.role
+  })
+
+  // Last-resort: if no avatar in session, try to fetch from Google userinfo using access token
+  useEffect(() => {
+    const accessToken = (session as any)?.accessToken as string | undefined
+    const current = (session?.user as any)?.profilePicture || (session?.user as any)?.image
+    if (!current && accessToken && !avatarUrl) {
+      ;(async () => {
+        const pic = await fetchGoogleProfilePicture({ accessToken })
+        if (pic) setAvatarUrl(pic)
+      })()
+    }
+  }, [session, avatarUrl])
 
   // Determine navigation items based on user role
   const getNavigationItems = () => {
@@ -152,7 +206,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const getDashboardUrl = () => {
     const userRole = session?.user?.role
     if (userRole === "Admin") {
-      return "/admin/console"
+      return "/admin/dashboard"
     } else if (["Teacher/Instructor", "Non Teaching Personnel"].includes(userRole || "")) {
       return "/teacher/dashboard"
     }

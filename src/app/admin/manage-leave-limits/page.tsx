@@ -142,10 +142,10 @@ export default function ManageLeaveLimitsPage() {
         console.log("Term types data:", termTypesData)
         console.log("Leave types data:", leaveTypesData)
 
-        // Defensive programming - ensure data is arrays
+        // Defensive programming - ensure data is arrays and extract from wrapped responses
         setLeaveLimits(Array.isArray(leaveLimitsData) ? leaveLimitsData : [])
         setStatuses(Array.isArray(statusesData) ? statusesData : [])
-        setTermTypes(Array.isArray(termTypesData) ? termTypesData : [])
+        setTermTypes(Array.isArray(termTypesData?.data) ? termTypesData.data : [])
         setLeaveTypes(Array.isArray(leaveTypesData) ? leaveTypesData : [])
         setFilteredLimits(Array.isArray(leaveLimitsData) ? leaveLimitsData : [])
       } catch (error) {
@@ -416,7 +416,7 @@ export default function ManageLeaveLimitsPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Terms</SelectItem>
-                        {termTypes.map((termType) => (
+                        {termTypes.filter(term => term.isActive).map((termType) => (
                           <SelectItem key={termType.term_type_id} value={termType.name}>
                             {termType.name}
                           </SelectItem>
@@ -544,7 +544,7 @@ export default function ManageLeaveLimitsPage() {
                         <SelectValue placeholder="Select term type" />
                       </SelectTrigger>
                       <SelectContent>
-                        {termTypes.map((termType) => (
+                        {termTypes.filter(term => term.isActive).map((termType) => (
                           <SelectItem key={termType.term_type_id} value={termType.term_type_id.toString()}>
                             {termType.name}
                           </SelectItem>
@@ -631,7 +631,7 @@ export default function ManageLeaveLimitsPage() {
                         <SelectValue placeholder="Select term type" />
                       </SelectTrigger>
                       <SelectContent>
-                        {termTypes.map((termType) => (
+                        {termTypes.filter(term => term.isActive).map((termType) => (
                           <SelectItem key={termType.term_type_id} value={termType.term_type_id.toString()}>
                             {termType.name}
                           </SelectItem>

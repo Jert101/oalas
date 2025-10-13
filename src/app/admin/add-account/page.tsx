@@ -27,6 +27,7 @@ interface Role {
   role_id: number
   name: string
   description: string
+  category_id?: number
 }
 
 interface Department {
@@ -34,6 +35,13 @@ interface Department {
   name: string
   description: string
   category: 'NON_TEACHING_PERSONNEL' | 'ACADEMIC_DEPARTMENT'
+}
+
+interface RoleCategory {
+  category_id: number
+  name: string
+  description?: string
+  color?: string
 }
 
 interface Status {
@@ -49,6 +57,7 @@ const addAccountSchema = z.object({
   middleName: z.string().optional(),
   suffix: z.string().optional(),
   email: z.string().email("Invalid email address"),
+  roleCategory: z.string().min(1, "Role category is required"),
   role_id: z.string().min(1, "Role is required"),
   department_id: z.string().optional(),
   isDepartmentHead: z.enum(["yes", "no"]),
@@ -76,6 +85,7 @@ export default function AddAccountPage() {
   const [isDataLoading, setIsDataLoading] = useState(true)
   
   // State for dynamic data
+  const [roleCategories, setRoleCategories] = useState<RoleCategory[]>([])
   const [roles, setRoles] = useState<Role[]>([])
   const [departments, setDepartments] = useState<Department[]>([])
   const [statuses, setStatuses] = useState<Status[]>([])
@@ -96,20 +106,53 @@ export default function AddAccountPage() {
     }
   })
 
+  const watchedRoleCategory = watch("roleCategory")
   const watchedRoleId = watch("role_id")
 
   // Fetch reference data on component mount
   useEffect(() => {
     const fetchReferenceData = async () => {
       try {
-        const response = await fetch("/api/admin/reference-data")
-        if (response.ok) {
-          const data = await response.json()
-          setRoles(data.roles)
-          setDepartments(data.departments)
-          setStatuses(data.statuses)
+        setIsDataLoading(true)
+        console.log('🔍 Loading reference data...')
+        
+        const [referenceResponse, categoriesResponse, departmentsResponse, statusesResponse] = await Promise.all([
+          fetch("/api/admin/reference-data"),
+          fetch("/api/role-categories"),
+          fetch("/api/admin/departments"),
+          fetch("/api/admin/statuses")
+        ])
+
+        if (referenceResponse.ok) {
+          const data = await referenceResponse.json()
+          setRoles(data.roles || [])
+          console.log('✅ Roles loaded:', data.roles?.length || 0)
         } else {
-          toast.error("Failed to load reference data")
+          console.error('❌ Failed to fetch roles:', referenceResponse.status)
+        }
+
+        if (categoriesResponse.ok) {
+          const categoryData = await categoriesResponse.json()
+          setRoleCategories(categoryData.categories || [])
+          console.log('✅ Role categories loaded:', categoryData.categories?.length || 0)
+        } else {
+          console.error('❌ Failed to fetch role categories:', categoriesResponse.status)
+        }
+
+        if (departmentsResponse.ok) {
+          const deptData = await departmentsResponse.json()
+          setDepartments(deptData || [])
+          console.log('✅ Departments loaded:', deptData?.length || 0)
+        } else {
+          console.error('❌ Failed to fetch departments:', departmentsResponse.status)
+        }
+
+        if (statusesResponse.ok) {
+          const statusData = await statusesResponse.json()
+          setStatuses(statusData || [])
+          console.log('✅ Statuses loaded:', statusData?.length || 0)
+        } else {
+          console.error('❌ Failed to fetch statuses:', statusesResponse.status)
         }
       } catch (error) {
         console.error("Error fetching reference data:", error)
@@ -126,38 +169,91 @@ export default function AddAccountPage() {
     if (status === "unauthenticated") {
       router.push("/login")
     } else if (session?.user?.role !== "Admin") {
-      router.push("/admin/console")
+              router.push("/admin/dashboard")
     }
   }, [session, status, router])
 
+  // Fetch roles when role category changes
+  useEffect(() => {
+    if (!watchedRoleCategory) {
+      setRoles([])
+      setValue("role_id", "")
+      return
+    }
+
+    const fetchRolesByCategory = async () => {
+      try {
+        const response = await fetch(`/api/roles?category_id=${watchedRoleCategory}`)
+        if (response.ok) {
+          const data = await response.json()
+          setRoles(data.roles || [])
+          console.log('✅ Roles loaded for category:', data.roles?.length || 0)
+        }
+      } catch (error) {
+        console.error("Error fetching roles by category:", error)
+        toast.error("Failed to load roles")
+      }
+    }
+
+    fetchRolesByCategory()
+  }, [watchedRoleCategory, setValue])
+
+  // Auto-select role when role category changes
+  useEffect(() => {
+    if (!watchedRoleCategory || isDataLoading) {
+      setValue("role_id", "")
+      return
+    }
+
+    const selectedCategory = roleCategories.find(c => c.category_id.toString() === watchedRoleCategory)
+    
+    // Auto-select role for certain categories
+    if (selectedCategory?.name === "Teaching Staff" && roles.length > 0) {
+      const teacherRole = roles.find(r => r.name === "Teacher/Instructor")
+      if (teacherRole) {
+        setValue("role_id", teacherRole.role_id.toString())
+      }
+    } else if (selectedCategory?.name === "Department Head" && roles.length > 0) {
+      const deptHeadRole = roles.find(r => r.name === "Department Head")
+      if (deptHeadRole) {
+        setValue("role_id", deptHeadRole.role_id.toString())
+      }
+    }
+
+    // Clear department selection when role category changes
+    setValue("department_id", "")
+  }, [watchedRoleCategory, roles, setValue, roleCategories, isDataLoading])
+
   useEffect(() => {
     setSelectedRoleId(watchedRoleId)
-    // Clear department when role changes
-    setValue("department_id", "")
     
-    // Filter departments based on selected role
-    if (watchedRoleId && departments.length > 0) {
-      const selectedRole = roles.find(r => r.role_id.toString() === watchedRoleId)
-      if (selectedRole) {
+    // Filter departments based on selected role category
+    if (watchedRoleCategory && departments.length > 0) {
+      const selectedCategory = roleCategories.find(c => c.category_id.toString() === watchedRoleCategory)
+      if (selectedCategory) {
         let filteredDepartments: Department[] = []
         
-        // Show all departments for Teacher/Instructor
-        if (selectedRole.name === "Teacher/Instructor") {
+        // Show all departments for Teaching Staff
+        if (selectedCategory.name === "Teaching Staff") {
           filteredDepartments = departments
         } 
-        // Show only non-teaching departments for Non Teaching Personnel and Finance Officer
-        else if (selectedRole.name === "Non Teaching Personnel" || selectedRole.name === "Finance Officer") {
-          filteredDepartments = departments.filter(d => d.category === "NON_TEACHING_PERSONNEL")
-        } 
-        // Show only academic departments for Dean/Program Head
-        else if (selectedRole.name === "Dean/Program Head") {
+        // Show only academic departments for Department Head
+        else if (selectedCategory.name === "Department Head") {
           filteredDepartments = departments.filter(d => d.category === "ACADEMIC_DEPARTMENT")
+        } 
+        // Show only non-teaching departments for Non Teaching Staff
+        else if (selectedCategory.name === "Non Teaching Staff") {
+          filteredDepartments = departments.filter(d => d.category === "NON_TEACHING_PERSONNEL")
+        }
+        // Show only non-teaching departments for Finance
+        else if (selectedCategory.name === "Finance") {
+          filteredDepartments = departments.filter(d => d.category === "NON_TEACHING_PERSONNEL")
         }
         // Admin can see all departments
-        else if (selectedRole.name === "Admin") {
+        else if (selectedCategory.name === "Administration") {
           filteredDepartments = departments
         }
-        // For other roles (HR Department, Registrar), show all departments
+        // For other categories, show all departments
         else {
           filteredDepartments = departments
         }
@@ -167,7 +263,7 @@ export default function AddAccountPage() {
     } else {
       setAvailableDepartments([])
     }
-  }, [watchedRoleId, setValue, departments, roles])
+  }, [watchedRoleCategory, departments, roleCategories])
 
   const generatePassword = () => {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*"
@@ -318,7 +414,10 @@ export default function AddAccountPage() {
     )
   }
 
-  const requiresDepartment = selectedRoleId && roles.find(r => r.role_id.toString() === selectedRoleId)?.name !== "Admin"
+  const requiresDepartment = watchedRoleCategory && (() => {
+    const selectedCategory = roleCategories.find(c => c.category_id.toString() === watchedRoleCategory)
+    return selectedCategory?.name === "Teaching Staff" || selectedCategory?.name === "Department Head"
+  })()
 
   return (
     <SidebarProvider
@@ -431,40 +530,85 @@ export default function AddAccountPage() {
                   <div className="space-y-4">
                     <h3 className="text-lg font-medium border-b pb-2">Role & Department</h3>
                     <div className="space-y-4">
+                      {/* Role Category */}
                       <div className="space-y-2">
-                        <Label>Role *</Label>
-                        <Select onValueChange={(value) => setValue("role_id", value)}>
-                          <SelectTrigger className={errors.role_id ? "border-red-500" : ""}>
-                            <SelectValue placeholder="Select role" />
+                        <Label>Role Category *</Label>
+                        <Select onValueChange={(value) => setValue("roleCategory", value)} disabled={isDataLoading}>
+                          <SelectTrigger className={errors.roleCategory ? "border-red-500" : ""}>
+                            <SelectValue placeholder="Select role category" />
                           </SelectTrigger>
                           <SelectContent>
-                            {roles.map((role) => (
-                              <SelectItem key={role.role_id} value={role.role_id.toString()}>
-                                {role.name}
-                              </SelectItem>
-                            ))}
+                            {roleCategories
+                              .filter(category => category.name !== "Administration") // Exclude admin category for regular users
+                              .map((category) => (
+                                <SelectItem key={category.category_id} value={category.category_id.toString()}>
+                                  <div className="flex items-center space-x-2">
+                                    <span>{category.name}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
                           </SelectContent>
                         </Select>
-                        {errors.role_id && (
-                          <p className="text-sm text-red-500">{errors.role_id.message}</p>
+                        {errors.roleCategory && (
+                          <p className="text-sm text-red-500">{errors.roleCategory.message}</p>
                         )}
                       </div>
 
+                      {/* Specific Role (only show for categories that need role selection) */}
+                      {watchedRoleCategory && (() => {
+                        const selectedCategory = roleCategories.find(c => c.category_id.toString() === watchedRoleCategory)
+                        
+                        // Don't show role selection for Teaching Staff and Department Head (auto-selected)
+                        if (selectedCategory?.name === "Teaching Staff" || selectedCategory?.name === "Department Head") {
+                          return null
+                        }
+                        
+                        // Show role selection for other categories
+                        return (
+                          <div className="space-y-2">
+                            <Label>Specific Role *</Label>
+                            <Select onValueChange={(value) => setValue("role_id", value)} disabled={isDataLoading}>
+                              <SelectTrigger className={errors.role_id ? "border-red-500" : ""}>
+                                <SelectValue placeholder="Select specific role" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {roles.map((role) => (
+                                  <SelectItem key={role.role_id} value={role.role_id.toString()}>
+                                    <div className="flex items-center space-x-2">
+                                      <span>{role.name}</span>
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {errors.role_id && (
+                              <p className="text-sm text-red-500">{errors.role_id.message}</p>
+                            )}
+                          </div>
+                        )
+                      })()}
+
+                      {/* Department (only when applicable and filtered by role category) */}
                       {requiresDepartment && availableDepartments.length > 0 && (
                         <div className="space-y-2">
-                          <Label>Department</Label>
-                          <Select onValueChange={(value) => setValue("department_id", value)}>
-                            <SelectTrigger>
+                          <Label>Department *</Label>
+                          <Select onValueChange={(value) => setValue("department_id", value)} disabled={isDataLoading}>
+                            <SelectTrigger className={errors.department_id ? "border-red-500" : ""}>
                               <SelectValue placeholder="Select department" />
                             </SelectTrigger>
                             <SelectContent>
                               {availableDepartments.map((dept) => (
                                 <SelectItem key={dept.department_id} value={dept.department_id.toString()}>
-                                  {dept.name}
+                                  <div className="flex items-center space-x-2">
+                                    <span>{dept.name}</span>
+                                  </div>
                                 </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
+                          {errors.department_id && (
+                            <p className="text-sm text-red-500">Department is required</p>
+                          )}
                         </div>
                       )}
 

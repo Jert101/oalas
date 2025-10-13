@@ -140,6 +140,77 @@ export async function PUT(
       }
     })
 
+    // Automatically update leave balances for all users with this status
+    console.log(`🔄 Updating leave balances for users with status: ${status.name}`)
+    try {
+      // Get current calendar period
+      const currentPeriod = await prisma.calendarPeriod.findFirst({
+        where: { isCurrent: true }
+      })
+
+      if (currentPeriod) {
+        // Get all active users with this status
+        const usersWithStatus = await prisma.user.findMany({
+          where: {
+            status_id: parseInt(status_id),
+            isActive: true
+          }
+        })
+
+        console.log(`👥 Found ${usersWithStatus.length} users with status: ${status.name}`)
+
+        // Update leave balances for each user
+        for (const user of usersWithStatus) {
+          try {
+            // Check if balance exists
+            const existingBalance = await prisma.leaveBalance.findFirst({
+              where: {
+                users_id: user.users_id,
+                calendar_period_id: currentPeriod.calendar_period_id,
+                leave_type_id: parseInt(leave_type_id)
+              }
+            })
+
+            if (existingBalance) {
+              // Update existing balance
+              await prisma.leaveBalance.update({
+                where: {
+                  leave_balance_id: existingBalance.leave_balance_id
+                },
+                data: {
+                  allowedDays: parseInt(daysAllowed),
+                  remainingDays: parseInt(daysAllowed) - existingBalance.usedDays
+                }
+              })
+              console.log(`   ✅ Updated leave balance for ${user.name}`)
+            } else {
+              // Create new balance if it doesn't exist
+              await prisma.leaveBalance.create({
+                data: {
+                  users_id: user.users_id,
+                  calendar_period_id: currentPeriod.calendar_period_id,
+                  status_id: parseInt(status_id),
+                  term_type_id: parseInt(term_type_id),
+                  leave_type_id: parseInt(leave_type_id),
+                  allowedDays: parseInt(daysAllowed),
+                  usedDays: 0,
+                  remainingDays: parseInt(daysAllowed)
+                }
+              })
+              console.log(`   ✅ Created leave balance for ${user.name}`)
+            }
+          } catch (error) {
+            console.error(`   ❌ Failed to update leave balance for ${user.name}:`, error.message)
+          }
+        }
+      } else {
+        console.log('⚠️ No current calendar period found - leave balances not updated')
+      }
+    } catch (error) {
+      console.error('❌ Error updating leave balances:', error)
+      // Don't fail the leave limit update if balance update fails
+    }
+
     return NextResponse.json(updatedLeaveLimit, { status: 200 })
   } catch (error) {
     console.error("Error updating leave limit:", error)

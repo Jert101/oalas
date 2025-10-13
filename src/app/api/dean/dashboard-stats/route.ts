@@ -3,149 +3,178 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
-export async function GET(request: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.email) {
+    if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
+    
+    // Allow Dean/Program Head, Department Head, Admin, and office heads
+    const userRole = session.user.role
+    const isDepartmentHead = (session.user as any)?.isDepartmentHead
+    
+    const allowedRoles = ["Dean/Program Head", "Department Head", "Admin"]
+    const isAllowedRole = allowedRoles.includes(userRole || "")
+    const isOfficeHead = isDepartmentHead === true
+    
+    if (!isAllowedRole && !isOfficeHead) {
+      console.log("[DeanStats] Access denied for role:", userRole, "isDepartmentHead:", isDepartmentHead)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+    
+    console.log("[DeanStats] Access granted for role:", userRole, "isDepartmentHead:", isDepartmentHead)
 
-    // Get current user
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
+    // Get the user's data (dean, department head, or office head)
+    const currentUser = await prisma.user.findFirst({
+      where: { 
+        users_id: session.user.id
+      },
       include: {
         department: true,
         role: true
       }
     })
 
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
-    }
-
-    // Verify user is a Dean/Program Head
-    if (user.role?.name !== "Dean/Program Head") {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 })
-    }
-
-    // Get current calendar period
-    const currentPeriod = await prisma.calendarPeriod.findFirst({
-      where: { isCurrent: true }
+    // For office heads without departments, return basic stats for all departments
+    // For deans/department heads, filter by their department
+    const userDepartmentId = currentUser?.department?.department_id
+    
+    console.log("[DeanStats] User department:", {
+      userId: currentUser?.users_id,
+      role: currentUser?.role?.name,
+      departmentId: userDepartmentId,
+      departmentName: currentUser?.department?.name
     })
 
-    if (!currentPeriod) {
-      return NextResponse.json({ error: "No current calendar period found" }, { status: 404 })
-    }
-
-    // Optimized: Get faculty members and applications in parallel
-    const [facultyMembers, leaveApplications] = await Promise.all([
-      prisma.user.findMany({
+    // Fetch dean-specific statistics
+    const [
+      pendingApplications,
+      approvedApplications,
+      deniedApplications,
+      totalApplications,
+      facultyMembers,
+      recentApplications
+    ] = await Promise.all([
+      // Pending applications (filtered by department if user has one)
+      prisma.leaveApplication.count({
         where: {
-          department_id: user.department_id,
+          status: "PENDING",
+          ...(userDepartmentId && {
+            user: {
+              department_id: userDepartmentId
+            }
+          })
+        }
+      }),
+
+      // Approved applications (filtered by department if user has one)
+      prisma.leaveApplication.count({
+        where: {
+          status: "APPROVED",
+          ...(userDepartmentId && {
+            user: {
+              department_id: userDepartmentId
+            }
+          })
+        }
+      }),
+
+      // Denied applications (filtered by department if user has one)
+      prisma.leaveApplication.count({
+        where: {
+          status: "DENIED",
+          ...(userDepartmentId && {
+            user: {
+              department_id: userDepartmentId
+            }
+          })
+        }
+      }),
+
+      // Total applications (filtered by department if user has one)
+      prisma.leaveApplication.count({
+        where: {
+          ...(userDepartmentId && {
+            user: {
+              department_id: userDepartmentId
+            }
+          })
+        }
+      }),
+
+      // Faculty members (filtered by department if user has one)
+      prisma.user.count({
+        where: {
+          ...(userDepartmentId && { department_id: userDepartmentId }),
+          isActive: true,
           role: {
             name: "Teacher/Instructor"
-          },
+          }
+        }
+      }),
+
+      // Recent applications (last 5, filtered by department if user has one)
+      prisma.leaveApplication.findMany({
+        take: 5,
+        where: {
+          ...(userDepartmentId && {
+            user: {
+              department_id: userDepartmentId
+            }
+          })
         },
-        select: {
-          users_id: true,
-          name: true,
-          status: {
+        orderBy: {
+          createdAt: 'desc'
+        },
+        include: {
+          user: {
+            select: {
+              name: true,
+              email: true
+            }
+          },
+          leaveType: {
             select: {
               name: true
             }
           }
         }
-      }),
-      prisma.leaveApplication.findMany({
-        where: {
-          calendar_period_id: currentPeriod.calendar_period_id,
-          user: {
-            department_id: user.department_id
-          }
-        },
-        select: {
-          leave_application_id: true,
-          status: true,
-          appliedAt: true,
-          user: {
-            select: {
-              name: true,
-              email: true,
-              profilePicture: true
-            }
-          }
-        },
-        orderBy: {
-          appliedAt: 'desc'
-        }
       })
     ])
 
-    // Calculate statistics
-    const pendingApplications = leaveApplications.filter(app => app.status === 'PENDING').length
-    const approvedApplications = leaveApplications.filter(app => app.status === 'APPROVED').length
-    const deniedApplications = leaveApplications.filter(app => app.status === 'DENIED').length
-    const totalFaculty = facultyMembers.length
-
-    // Get recent applications (last 5)
-    const recentApplications = leaveApplications.slice(0, 5)
-
-    // Get department statistics
-    const departmentStats = {
-      totalFaculty,
-      activeFaculty: facultyMembers.filter(f => f.status?.name === 'Regular').length,
-      probationaryFaculty: facultyMembers.filter(f => f.status?.name === 'Probation').length
+    const stats = {
+      pendingApplications,
+      approvedApplications,
+      deniedApplications,
+      totalApplications,
+      facultyMembers,
+      recentApplications: recentApplications.map(app => ({
+        id: app.leave_application_id,
+        userName: app.user.name,
+        userEmail: app.user.email,
+        leaveType: app.leaveType.name,
+        status: app.status,
+        startDate: app.startDate,
+        endDate: app.endDate,
+        createdAt: app.createdAt
+      })),
+      departmentName: currentUser?.department?.name || "All Departments"
     }
 
-    // Get monthly trends (last 6 months)
-    const sixMonthsAgo = new Date()
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
-
-    const monthlyTrends = await prisma.leaveApplication.groupBy({
-      by: ['status'],
-      where: {
-        calendar_period_id: currentPeriod.calendar_period_id,
-        user: {
-          department_id: user.department_id
-        },
-        appliedAt: {
-          gte: sixMonthsAgo
-        }
-      },
-      _count: {
-        status: true
-      }
-    })
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        pendingApplications,
-        approvedApplications,
-        deniedApplications,
-        totalFaculty,
-        departmentStats,
-        recentApplications,
-        monthlyTrends,
-        currentPeriod: {
-          academicYear: currentPeriod.academicYear,
-          startDate: currentPeriod.startDate,
-          endDate: currentPeriod.endDate
-        },
-        dean: {
-          name: user.name,
-          department: user.department?.name,
-          email: user.email
-        }
-      }
-    })
-
+    return NextResponse.json({ success: true, data: stats })
   } catch (error) {
-    console.error('Error fetching dean dashboard data:', error)
+    console.error("Error fetching dean dashboard stats:", error)
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Failed to fetch dashboard statistics" },
       { status: 500 }
     )
   }
 }
+
+
+
+
+
+

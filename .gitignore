@@ -40,6 +40,11 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# CSV exports and data dumps (never commit sensitive exports)
+csv_export_*/
+csv_export_all_19_tables_*/
+csv_export_complete_*/
+
 # vercel
 .vercel
 

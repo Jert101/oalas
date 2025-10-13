@@ -42,38 +42,34 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { academicYear, term, startDate, endDate } = body
+    const { academicYear, term_type_id, startDate, endDate } = body
 
     // Validate required fields
-    if (!academicYear || !term || !startDate || !endDate) {
+    if (!academicYear || !term_type_id || !startDate || !endDate) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
       )
     }
 
-    // Validate term and convert old format to new format if needed
-    let termName = term
-    if (term === "ACADEMIC") {
-      termName = "Academic"
-    } else if (term === "SUMMER") {
-      termName = "Summer"
-    }
-    
-    if (!["Academic", "Summer"].includes(termName)) {
+    // Validate term type exists
+    const termType = await prisma.termType.findUnique({
+      where: { term_type_id: parseInt(term_type_id) }
+    })
+
+    if (!termType) {
       return NextResponse.json(
         { error: "Invalid term type" },
         { status: 400 }
       )
     }
 
-    // Get the term type ID
-    // Ensure term type exists (create on the fly if missing)
-    const termType = await prisma.termType.upsert({
-      where: { name: termName },
-      update: {},
-      create: { name: termName }
-    })
+    if (!termType.isActive) {
+      return NextResponse.json(
+        { error: "Selected term type is inactive" },
+        { status: 400 }
+      )
+    }
 
     // Validate dates
     const start = new Date(startDate)

@@ -1,66 +1,71 @@
 "use client"
 
-import { Suspense } from "react"
-import { useSearchParams, useRouter } from "next/navigation"
+export const dynamic = 'force-dynamic'
+
+import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { AlertCircle, ArrowLeft } from "lucide-react"
+import Link from "next/link"
 
-export const dynamic = "force-dynamic"
-
-function AuthErrorContent() {
+export default function AuthErrorPage() {
   const searchParams = useSearchParams()
-  const router = useRouter()
-  const error = searchParams.get("error") || "Unknown"
+  const error = searchParams.get("error")
 
-  const messageMap: Record<string, string> = {
-    Configuration: "Authentication is misconfigured on the server. Please contact the administrator.",
-    AccessDenied: "You do not have access to sign in with this provider.",
-    Verification: "The sign-in link is no longer valid. Request a new one.",
-    OAuthSignin: "There was an issue initiating OAuth sign-in.",
-    OAuthCallback: "There was an issue completing OAuth sign-in.",
-    OAuthCreateAccount: "There was an issue creating your account from the provider.",
-    EmailCreateAccount: "There was an issue creating your email account.",
-    Callback: "There was an issue in the sign-in callback.",
-    OAuthAccountNotLinked: "Your email is already linked to a different sign-in method.",
-    EmailSignin: "There was an issue sending the email.",
-    CredentialsSignin: "Invalid email or password.",
-    SessionRequired: "Please sign in to continue.",
+  const getErrorMessage = (error: string | null) => {
+    switch (error) {
+      case "Only CKCM school email addresses (@ckcm.edu.ph) are allowed to sign in.":
+        return "Access Denied: Only CKCM school email addresses are allowed to sign in."
+      case "Configuration":
+        return "There is a problem with the server configuration."
+      case "AccessDenied":
+        return "Access Denied: Only CKCM school email addresses (@ckcm.edu.ph) are allowed to sign in. Please use your official CKCM email address."
+      case "Verification":
+        return "The verification token has expired or has already been used."
+      case "NonCkcmAccount":
+        return "Access Denied: Only CKCM school email addresses (@ckcm.edu.ph) are allowed to sign in with Google. Please use your official CKCM email address."
+      default:
+        return error || "An error occurred during authentication."
+    }
   }
 
-  const message = messageMap[error] || "An authentication error occurred."
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background py-12 px-4 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold text-center">Authentication Error</CardTitle>
+        <CardHeader className="space-y-1">
+          <div className="flex items-center justify-center">
+            <AlertCircle className="h-12 w-12 text-red-500" />
+          </div>
+          <CardTitle className="text-2xl font-bold text-center">
+            Authentication Error
+          </CardTitle>
           <CardDescription className="text-center">
-            {message}
+            {getErrorMessage(error)}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="text-sm text-center text-gray-500">Error code: {error}</div>
-          <Button className="w-full" onClick={() => router.push("/")}>Go to Home</Button>
+        <CardContent className="space-y-4">
+          <div className="text-center text-sm text-muted-foreground">
+            {error === "AccessDenied" || error === "NonCkcmAccount" ? (
+              <div className="space-y-2">
+                <p>This system is restricted to CKCM faculty and staff members only.</p>
+                <p>If you believe this is an error, please contact your system administrator.</p>
+              </div>
+            ) : (
+              <p>Please try again or contact support if the problem persists.</p>
+            )}
+          </div>
+          
+          <div className="space-y-2">
+            <Link href="/">
+              <Button className="w-full" variant="outline">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Login
+              </Button>
+            </Link>
+          </div>
         </CardContent>
       </Card>
     </div>
-  )
-}
-
-export default function AuthErrorPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold text-center">Loading...</CardTitle>
-          </CardHeader>
-          <CardContent />
-        </Card>
-      </div>
-    }>
-      <AuthErrorContent />
-    </Suspense>
   )
 }
 

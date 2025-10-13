@@ -13,9 +13,13 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session || session.user.role !== "Admin") return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  const { name, description, category } = await req.json()
-  if (!name || !category) return NextResponse.json({ error: "Name and category required" }, { status: 400 })
-  const created = await prisma.department.upsert({ where: { name }, update: { description, category }, create: { name, description, category } })
+  const { name, description } = await req.json()
+  if (!name) return NextResponse.json({ error: "Name is required" }, { status: 400 })
+  const created = await prisma.department.upsert({ 
+    where: { name }, 
+    update: { description }, 
+    create: { name, description, category: 'ACADEMIC_DEPARTMENT' } // Default to academic department
+  })
   return NextResponse.json(created, { status: 201 })
 }
 

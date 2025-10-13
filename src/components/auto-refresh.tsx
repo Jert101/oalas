@@ -9,7 +9,7 @@ interface AutoRefreshProps {
   enabled?: boolean // Whether auto-refresh is enabled (default: true)
 }
 
-export function AutoRefresh({ interval = 30000, enabled = true }: AutoRefreshProps) {
+export function AutoRefresh({ interval = 60000, enabled = true }: AutoRefreshProps) {
   const router = useRouter()
   const { data: session } = useSession()
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
@@ -18,13 +18,15 @@ export function AutoRefresh({ interval = 30000, enabled = true }: AutoRefreshPro
   useEffect(() => {
     if (!enabled || !session?.user?.id) return
 
-    // Function to refresh the current page
+    // Function to refresh the current page (only if tab is visible)
     const refreshPage = () => {
-      console.log('🔄 Auto-refreshing page...')
-      router.refresh()
+      if (!document.hidden) {
+        console.log('🔄 Auto-refreshing page...')
+        router.refresh()
+      }
     }
 
-    // Set up interval for auto-refresh
+    // Set up interval for auto-refresh (increased from 30s to 60s)
     intervalRef.current = setInterval(refreshPage, interval)
 
     // Cleanup on unmount
@@ -78,4 +80,15 @@ export function useAutoRefresh() {
 
   return { triggerRefresh }
 }
+
+
+
+
+
+
+
+
+
+
+
 

@@ -89,13 +89,38 @@ export function DeanSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) 
   const { data: session } = useSession()
   const router = useRouter()
   
+  const getAvatarUrl = (raw?: string | null, fallbackName?: string) => {
+    // If it looks URL-encoded, safely decode once or twice if needed
+    let url = raw || ""
+    if (url.includes("%")) {
+      try { 
+        url = decodeURIComponent(url)
+        // Check if it's still encoded (double encoding)
+        if (url.includes("%")) {
+          url = decodeURIComponent(url)
+        }
+        console.log("[DeanSidebar] Decoded URL:", { original: raw, decoded: url })
+      } catch (e) {
+        console.warn("[DeanSidebar] Failed to decode URL:", raw, e)
+        url = raw || ""
+      }
+    }
+    
+    // Ensure URL is valid
+    if (url && (url.startsWith('http') || url.startsWith('/'))) {
+      console.log("[DeanSidebar] Using profile picture:", url)
+      return url
+    }
+    
+    console.log("[DeanSidebar] Using fallback picture for:", fallbackName)
+    return '/ckcm.png'
+  }
+
   const userData = {
     name: session?.user?.name || "Dean",
     email: session?.user?.email || "dean@example.com", 
-    avatar: session?.user?.profilePicture?.startsWith('/') 
-      ? session?.user?.profilePicture 
-      : `/${session?.user?.profilePicture || 'ckcm.png'}`,
-    userId: session?.user?.id || "N/A",
+    avatar: '/ckcm.png', // GoogleAvatar will handle the real avatar fetching
+    userId: (session?.user as any)?.userId || session?.user?.id || "N/A",
   }
 
   const navigationItems = [...deanNavigationItems, ...commonNavigationItems]

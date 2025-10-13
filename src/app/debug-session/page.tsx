@@ -1,96 +1,104 @@
-"use client"
+'use client'
 
-import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useSession } from 'next-auth/react'
+import { GoogleAvatar } from '@/components/GoogleAvatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
-export default function DebugLandingPage() {
-  const { data: session, status } = useSession()
-  const router = useRouter()
-  const [debugInfo, setDebugInfo] = useState<{
-    status: string;
-    userRole?: string;
-    userEmail?: string;
-    userId?: string;
-    currentUrl: string;
-    timestamp: string;
-  }>({})
+export default function DebugSessionPage() {
+  const { data: session } = useSession()
 
-  useEffect(() => {
-    const info = {
-      status,
-      userRole: session?.user?.role,
-      userEmail: session?.user?.email,
-      userId: session?.user?.id,
-      currentUrl: window.location.href,
-      timestamp: new Date().toISOString()
-    }
-    setDebugInfo(info)
-    console.log("🐞 DEBUG INFO:", info)
-  }, [session, status])
-
-  const handleManualRedirect = (path: string) => {
-    console.log("🚀 Manual redirect to:", path)
-    router.push(path)
-  }
-
-  if (status === "loading") {
-    return <div className="p-8">Loading session...</div>
-  }
+  console.log('[DebugSession] Current session:', session)
 
   return (
-    <div className="p-8 max-w-2xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">🐞 Debug Session Information</h1>
-      
-      <div className="bg-gray-100 p-6 rounded-lg mb-6">
-        <h2 className="text-xl font-semibold mb-4">Current Session Data:</h2>
-        <div className="space-y-2">
-          <p><strong>Status:</strong> {debugInfo.status}</p>
-          <p><strong>User Role:</strong> {debugInfo.userRole || "No role found"}</p>
-          <p><strong>User Email:</strong> {debugInfo.userEmail || "No email"}</p>
-          <p><strong>User ID:</strong> {debugInfo.userId || "No ID"}</p>
-          <p><strong>Current URL:</strong> {debugInfo.currentUrl}</p>
-          <p><strong>Timestamp:</strong> {debugInfo.timestamp}</p>
+    <div className="container mx-auto py-8 space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold">Session Debug</h1>
+        <p className="text-muted-foreground">Check what's actually in the session</p>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold">Session Data</h2>
+          
+          {session ? (
+            <div className="space-y-2 text-sm bg-gray-100 p-4 rounded">
+              <div><strong>Email:</strong> {session.user?.email}</div>
+              <div><strong>Name:</strong> {session.user?.name}</div>
+              <div><strong>Role:</strong> {(session.user as any)?.role}</div>
+              <div><strong>ProfilePicture:</strong> {(session.user as any)?.profilePicture || 'None'}</div>
+              <div><strong>Image:</strong> {(session.user as any)?.image || 'None'}</div>
+              <div><strong>AccessToken:</strong> {(session as any)?.accessToken ? 'Present' : 'None'}</div>
+              <div><strong>IsDepartmentHead:</strong> {(session.user as any)?.isDepartmentHead ? 'Yes' : 'No'}</div>
+            </div>
+          ) : (
+            <div>Not logged in</div>
+          )}
+        </div>
+
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold">Avatar Tests</h2>
+          
+          <div className="space-y-4">
+            <div>
+              <h3 className="font-medium">GoogleAvatar Component:</h3>
+              <div className="flex items-center gap-4 mt-2">
+                <GoogleAvatar size={64} />
+                <span className="text-sm text-gray-600">Check console for GoogleAvatar logs</span>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="font-medium">Regular Avatar with Session Data:</h3>
+              <div className="flex items-center gap-4 mt-2">
+                <Avatar className="w-16 h-16">
+                  <AvatarImage 
+                    src={(session?.user as any)?.profilePicture || '/ckcm.png'} 
+                    alt={session?.user?.name || 'User'}
+                    onError={(e) => {
+                      console.log('[DebugSession] Regular avatar failed:', (session?.user as any)?.profilePicture)
+                    }}
+                    onLoad={() => {
+                      console.log('[DebugSession] Regular avatar loaded:', (session?.user as any)?.profilePicture)
+                    }}
+                  />
+                  <AvatarFallback>{session?.user?.name?.charAt(0) || 'U'}</AvatarFallback>
+                </Avatar>
+                <span className="text-sm text-gray-600">Direct session.user.profilePicture</span>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="font-medium">Regular Avatar with Image Field:</h3>
+              <div className="flex items-center gap-4 mt-2">
+                <Avatar className="w-16 h-16">
+                  <AvatarImage 
+                    src={(session?.user as any)?.image || '/ckcm.png'} 
+                    alt={session?.user?.name || 'User'}
+                    onError={(e) => {
+                      console.log('[DebugSession] Image avatar failed:', (session?.user as any)?.image)
+                    }}
+                    onLoad={() => {
+                      console.log('[DebugSession] Image avatar loaded:', (session?.user as any)?.image)
+                    }}
+                  />
+                  <AvatarFallback>{session?.user?.name?.charAt(0) || 'U'}</AvatarFallback>
+                </Avatar>
+                <span className="text-sm text-gray-600">Direct session.user.image</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Manual Navigation (to test routing):</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <button 
-            onClick={() => handleManualRedirect("/teacher/dashboard")}
-            className="bg-blue-500 text-white p-3 rounded hover:bg-blue-600"
-          >
-            Go to Teacher Dashboard
-          </button>
-          <button 
-            onClick={() => handleManualRedirect("/admin/console")}
-            className="bg-red-500 text-white p-3 rounded hover:bg-red-600"
-          >
-            Go to Admin Console
-          </button>
-          <button 
-            onClick={() => handleManualRedirect("/dashboard")}
-            className="bg-green-500 text-white p-3 rounded hover:bg-green-600"
-          >
-            Go to Main Dashboard
-          </button>
-          <button 
-            onClick={() => handleManualRedirect("/account")}
-            className="bg-purple-500 text-white p-3 rounded hover:bg-purple-600"
-          >
-            Go to Account Settings
-          </button>
-        </div>
-      </div>
-
-      <div className="mt-6 bg-yellow-100 p-4 rounded-lg">
-        <h3 className="font-semibold">Expected Behavior:</h3>
-        <ul className="list-disc ml-6 mt-2">
-          <li>Admin users → /admin/console</li>
-          <li>Teacher/Instructor → /teacher/dashboard</li>
-          <li>Dean/Program Head → /teacher/dashboard</li>
-        </ul>
+      <div className="bg-yellow-50 border border-yellow-200 rounded p-4">
+        <h3 className="font-medium text-yellow-800">Debug Instructions</h3>
+        <ol className="list-decimal list-inside text-sm text-yellow-700 mt-2 space-y-1">
+          <li>Open browser console (F12)</li>
+          <li>Look for "[NextAuth] SESSION CALLBACK" logs</li>
+          <li>Look for "[GoogleAvatar]" logs</li>
+          <li>Check which avatar actually displays an image</li>
+          <li>If all show fallback, the issue is in session data</li>
+        </ol>
       </div>
     </div>
   )

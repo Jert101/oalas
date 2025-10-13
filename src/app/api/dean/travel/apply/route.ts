@@ -32,22 +32,14 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const {
       destination,
-      startDate,
-      endDate,
-      transportationFee,
-      seminarConferenceFee,
-      mealsAccommodations,
-      totalCashRequested,
-      remarks,
-      supportingDocuments,
-      status,
-      deanReviewedAt,
-      deanReviewedBy,
-      deanComments
+      dateOfTravel,
+      expectedReturn,
+      purpose,
+      supportingDocuments
     } = body
 
     // Validate required fields
-    if (!destination || !startDate || !endDate) {
+    if (!destination || !dateOfTravel || !expectedReturn || !purpose) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
@@ -56,13 +48,13 @@ export async function POST(request: NextRequest) {
       data: {
         users_id: user.users_id,
         destination: destination,
-        startDate: new Date(startDate),
-        endDate: new Date(endDate),
-        transportationFee: transportationFee || 0,
-        seminarConferenceFee: seminarConferenceFee || 0,
-        mealsAccommodations: mealsAccommodations || 0,
-        totalCashRequested: totalCashRequested || 0,
-        remarks: remarks || null,
+        startDate: new Date(dateOfTravel),
+        endDate: new Date(expectedReturn),
+        transportationFee: 0,
+        seminarConferenceFee: 0,
+        mealsAccommodations: 0,
+        totalCashRequested: 0,
+        remarks: purpose,
         supportingDocuments: supportingDocuments || null,
         status: 'DEAN_APPROVED', // Automatically approved by dean
         appliedAt: new Date(),
@@ -102,6 +94,17 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+
+
+
+
+
+
+
+
+
+
 
 
 

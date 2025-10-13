@@ -53,14 +53,11 @@ export function LeaveTypeSelection({ onSelect, onBack, isLoading }: LeaveTypeSel
   const fetchLeaveTypes = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/teacher/leave-types')
+      const response = await fetch('/api/teacher/leave-types', { cache: 'no-store' })
       if (response.ok) {
         const data = await response.json()
-        // Get first 5 leave types (excluding Travel Order)
-        const filteredTypes = data.leave_types
-          .filter((type: LeaveType) => type.name !== 'Travel Order')
-          .slice(0, 5)
-        setLeaveTypes(filteredTypes)
+        // Display all leave types returned by the API
+        setLeaveTypes(data.leave_types)
       }
     } catch (error) {
       console.error('Error fetching leave types:', error)

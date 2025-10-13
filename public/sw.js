@@ -1,7 +1,7 @@
 // Service Worker for OALASS - Offline Caching & Network Optimization
-const CACHE_NAME = 'oalass-v1.0.0'
-const STATIC_CACHE = 'oalass-static-v1.0.0'
-const API_CACHE = 'oalass-api-v1.0.0'
+const CACHE_NAME = 'oalass-v1.0.1'
+const STATIC_CACHE = 'oalass-static-v1.0.1'
+const API_CACHE = 'oalass-api-v1.0.1'
 
 // Files to cache immediately
 const STATIC_FILES = [
@@ -115,8 +115,13 @@ async function handleApiRequest(request) {
     const networkResponse = await fetch(request)
     
     if (networkResponse.ok) {
-      // Cache the fresh response
-      cache.put(request, networkResponse.clone())
+      // Optionally bypass caching for dynamic lists
+      const url = new URL(request.url)
+      const bypassCache = url.pathname.startsWith('/api/teacher/leave-types') || url.pathname.startsWith('/api/leave-types')
+      if (!bypassCache) {
+        // Cache the fresh response
+        cache.put(request, networkResponse.clone())
+      }
       return networkResponse
     }
   } catch (error) {
@@ -271,4 +276,15 @@ self.addEventListener('message', (event) => {
     })
   }
 })
+
+
+
+
+
+
+
+
+
+
+
 

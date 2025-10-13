@@ -68,14 +68,39 @@ export function TeacherSidebar({ ...props }: React.ComponentProps<typeof Sidebar
 
   if (!session?.user) return null
 
+  const getAvatarUrl = (raw?: string | null, fallbackName?: string) => {
+    // If it looks URL-encoded, safely decode once or twice if needed
+    let url = raw || ""
+    if (url.includes("%")) {
+      try { 
+        url = decodeURIComponent(url)
+        // Check if it's still encoded (double encoding)
+        if (url.includes("%")) {
+          url = decodeURIComponent(url)
+        }
+        console.log("[TeacherSidebar] Decoded URL:", { original: raw, decoded: url })
+      } catch (e) {
+        console.warn("[TeacherSidebar] Failed to decode URL:", raw, e)
+        url = raw || ""
+      }
+    }
+    
+    // Ensure URL is valid
+    if (url && (url.startsWith('http') || url.startsWith('/'))) {
+      console.log("[TeacherSidebar] Using profile picture:", url)
+      return url
+    }
+    
+    console.log("[TeacherSidebar] Using fallback picture for:", fallbackName)
+    return '/ckcm.png'
+  }
+
   // Format user data for NavUser component
   const userData = {
     name: session.user.name || "User",
     email: session.user.email || "user@example.com",
-    avatar: session.user.profilePicture?.startsWith('/') 
-      ? session.user.profilePicture 
-      : `/${session.user.profilePicture || 'ckcm.png'}`,
-    userId: session.user.id || "N/A",
+    avatar: '/ckcm.png', // GoogleAvatar will handle the real avatar fetching
+    userId: (session.user as any)?.userId || session.user.id || "N/A",
   }
 
   return (

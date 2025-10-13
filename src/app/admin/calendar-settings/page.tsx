@@ -69,9 +69,16 @@ interface LeaveApplication {
   }
 }
 
+interface TermType {
+  term_type_id: number
+  name: string
+  description: string | null
+  isActive: boolean
+}
+
 interface NewPeriodForm {
   academicYear: string
-  term: "Academic" | "Summer"
+  term_type_id: number | null
   startDate: string
   endDate: string
 }
@@ -86,13 +93,26 @@ export default function CalendarSettingsPage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [termTypes, setTermTypes] = useState<TermType[]>([])
   
   const [newPeriod, setNewPeriod] = useState<NewPeriodForm>({
     academicYear: "",
-    term: "Academic",
+    term_type_id: null,
     startDate: "",
     endDate: ""
   })
+
+  // Fetch term types
+  const fetchTermTypes = async () => {
+    try {
+      const response = await fetch("/api/admin/term-types")
+      if (!response.ok) throw new Error("Failed to fetch term types")
+      const result = await response.json()
+      setTermTypes(result.data || [])
+    } catch (error) {
+      console.error("Error fetching term types:", error)
+    }
+  }
 
   // Fetch calendar periods
   const fetchCalendarPeriods = async () => {
@@ -129,7 +149,7 @@ export default function CalendarSettingsPage() {
 
   // Add new calendar period
   const handleAddPeriod = async () => {
-    if (!newPeriod.academicYear || !newPeriod.startDate || !newPeriod.endDate) {
+    if (!newPeriod.academicYear || !newPeriod.term_type_id || !newPeriod.startDate || !newPeriod.endDate) {
       toast.error("Please fill in all required fields")
       return
     }
@@ -148,7 +168,7 @@ export default function CalendarSettingsPage() {
       setIsAddDialogOpen(false)
       setNewPeriod({
         academicYear: "",
-        term: "Academic",
+        term_type_id: null,
         startDate: "",
         endDate: ""
       })
@@ -207,6 +227,7 @@ export default function CalendarSettingsPage() {
   }
 
   useEffect(() => {
+    fetchTermTypes()
     fetchCalendarPeriods()
   }, [])
 
@@ -342,19 +363,22 @@ export default function CalendarSettingsPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="term">Term *</Label>
+                  <Label htmlFor="term">Term Type *</Label>
                   <Select 
-                    value={newPeriod.term} 
-                    onValueChange={(value: "Academic" | "Summer") => 
-                      setNewPeriod({ ...newPeriod, term: value })
+                    value={newPeriod.term_type_id?.toString() || ""} 
+                    onValueChange={(value) => 
+                      setNewPeriod({ ...newPeriod, term_type_id: parseInt(value) })
                     }
                   >
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Select a term type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Academic">Academic</SelectItem>
-                      <SelectItem value="Summer">Summer</SelectItem>
+                      {termTypes.filter(term => term.isActive).map((termType) => (
+                        <SelectItem key={termType.term_type_id} value={termType.term_type_id.toString()}>
+                          {termType.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

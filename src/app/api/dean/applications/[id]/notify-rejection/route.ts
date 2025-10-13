@@ -12,10 +12,34 @@ export async function POST(
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session || session.user.role !== 'Dean/Program Head') {
+    if (!session?.user?.email) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
+      )
+    }
+
+    // Get current user
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      include: {
+        role: true
+      }
+    })
+
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'User not found' },
+        { status: 404 }
+      )
+    }
+
+    // Verify user is a Dean/Program Head or Department Head
+    const allowedRoles = ["Dean/Program Head", "Department Head"]
+    if (!allowedRoles.includes(user.role?.name || "")) {
+      return NextResponse.json(
+        { success: false, error: 'Access denied' },
+        { status: 403 }
       )
     }
 

@@ -272,26 +272,41 @@ export default function DeanApplicationDetailPage() {
     return !shouldShowSpecificPurpose(leaveType) && !shouldShowDescriptionOfSickness(leaveType)
   }
 
-  const handleDownloadFile = (filePath: string, fileName: string) => {
+  const inferFileName = (filePath: string) => {
     try {
+      if (!filePath) return 'medical-proof'
+      if (filePath.startsWith('data:')) {
+        const semi = filePath.indexOf(';')
+        const mime = semi > 5 ? filePath.substring(5, semi) : 'application/octet-stream'
+        const ext = mime.split('/')[1] || 'bin'
+        return `medical-proof.${ext}`
+      }
+      const url = new URL(filePath, window.location.origin)
+      const base = url.pathname.split('/').pop() || 'medical-proof'
+      return base
+    } catch {
+      const clean = filePath.split('?')[0].split('#')[0]
+      const base = clean.split('/').pop() || 'medical-proof'
+      return base
+    }
+  }
+
+  const handleDownloadFile = (filePath: string, defaultName = 'medical-proof') => {
+    try {
+      const fileName = inferFileName(filePath) || defaultName
       // Check if it's a base64 data URL
       if (filePath.startsWith('data:')) {
         // Convert base64 to blob
-        const response = fetch(filePath)
-        response.then(res => res.blob())
+        fetch(filePath)
+          .then(res => res.blob())
           .then(blob => {
-            // Create blob URL
             const blobUrl = URL.createObjectURL(blob)
-            
-            // Create download link
             const link = document.createElement('a')
             link.href = blobUrl
             link.download = fileName
             document.body.appendChild(link)
             link.click()
             document.body.removeChild(link)
-            
-            // Clean up blob URL
             setTimeout(() => URL.revokeObjectURL(blobUrl), 100)
           })
           .catch(error => {
@@ -299,7 +314,6 @@ export default function DeanApplicationDetailPage() {
             alert('Failed to download file')
           })
       } else {
-        // Handle regular file paths (if any)
         const link = document.createElement('a')
         link.href = filePath
         link.download = fileName
@@ -593,19 +607,28 @@ export default function DeanApplicationDetailPage() {
                   <div className="flex items-center gap-2">
                     <FileImage className="h-4 w-4 text-blue-600" />
                     <span className="text-sm font-medium">
-                      {application.medicalProof.endsWith('.pdf') ? 'PDF Document' : 'Medical Certificate'}
+                      {(() => {
+                        const mp = application.medicalProof!
+                        const isPdf = mp.toLowerCase().endsWith('.pdf') || mp.startsWith('data:application/pdf')
+                        return isPdf ? 'PDF Document' : 'Medical Certificate'
+                      })()}
                     </span>
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleDownloadFile(application.medicalProof!, 'medical-proof')}
+                    onClick={() => handleDownloadFile(application.medicalProof!)}
                   >
                     <Download className="h-4 w-4 mr-2" />
                     Download
                   </Button>
                 </div>
-                {!application.medicalProof.endsWith('.pdf') && (
+                {(() => {
+                  const mp = application.medicalProof!
+                  const isPdf = mp.toLowerCase().endsWith('.pdf') || mp.startsWith('data:application/pdf')
+                  const isImage = mp.startsWith('data:image/') || /\.(png|jpe?g|gif|webp)$/i.test(mp)
+                  return !isPdf && isImage
+                })() && (
                   <div className="mt-3">
                     <img 
                       src={application.medicalProof} 
@@ -615,14 +638,10 @@ export default function DeanApplicationDetailPage() {
                         console.error('Medical proof image failed to load:', application.medicalProof)
                         const target = e.target as HTMLImageElement
                         target.style.display = 'none'
-                        // Show error message
                         const errorDiv = document.createElement('div')
                         errorDiv.className = 'text-red-500 text-sm mt-2'
                         errorDiv.textContent = 'Image failed to load. Please try downloading the file instead.'
                         target.parentNode?.appendChild(errorDiv)
-                      }}
-                      onLoad={() => {
-                        console.log('Medical proof image loaded successfully:', application.medicalProof)
                       }}
                     />
                   </div>

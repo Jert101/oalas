@@ -244,10 +244,25 @@ export default function LeaveApplicationPage() {
     hours: number;
     specificPurpose?: string;
     descriptionOfSickness?: string;
-    medicalProof?: File;
+    medicalProof?: File | string;
   }) => {
     setIsLoading(true)
     try {
+      // Convert file to base64 if a File object was provided
+      let medicalProofBase64: string | undefined = undefined
+      if (formData.medicalProof instanceof File) {
+        const file = formData.medicalProof
+        const reader = new FileReader()
+        const base64Promise = new Promise<string>((resolve, reject) => {
+          reader.onload = () => resolve(reader.result as string)
+          reader.onerror = () => reject(reader.error)
+        })
+        reader.readAsDataURL(file)
+        medicalProofBase64 = await base64Promise
+      } else if (typeof formData.medicalProof === 'string') {
+        medicalProofBase64 = formData.medicalProof
+      }
+
       const response = await fetch('/api/teacher/leave/apply', {
         method: 'POST',
         headers: {
@@ -255,6 +270,7 @@ export default function LeaveApplicationPage() {
         },
         body: JSON.stringify({
           ...formData,
+          medicalProof: medicalProofBase64,
           leaveTypeId: selectedLeaveType?.leave_type_id,
         }),
       })
@@ -263,14 +279,24 @@ export default function LeaveApplicationPage() {
         toast.success('Leave application submitted successfully!')
         router.push('/teacher/dashboard')
       } else {
-        const error = await response.json()
-        console.error('Error submitting application:', error)
-        
-        if (error.validationDetails) {
-          toast.error(error.error || 'Validation failed')
-        } else {
-          toast.error(error.error || 'Failed to submit application')
+        let errorMessage = 'Failed to submit application'
+        try {
+          const text = await response.text()
+          try {
+            const data = JSON.parse(text)
+            console.error('Error submitting application:', data)
+            errorMessage = data.error || errorMessage
+            if ((data as any).validationDetails) {
+              errorMessage = data.error || 'Validation failed'
+            }
+          } catch {
+            console.error('Error submitting application (raw):', text)
+            errorMessage = text || `${errorMessage} (status ${response.status})`
+          }
+        } catch (e) {
+          console.error('Error reading error response:', e)
         }
+        toast.error(errorMessage)
       }
     } catch (error) {
       console.error('Error submitting application:', error)

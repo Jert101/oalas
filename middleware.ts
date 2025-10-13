@@ -5,24 +5,116 @@ export default withAuth(
   function middleware(req) {
     const token = req.nextauth.token
     const pathname = req.nextUrl.pathname
+    
+    // Public routes allowed without auth (must run BEFORE token checks)
+    if (pathname.startsWith('/auth') || 
+        pathname === '/' || 
+        pathname.startsWith('/api/auth') ||
+        pathname.startsWith('/api/account')) {
+      return NextResponse.next()
+    }
 
     // If no token and trying to access protected routes, redirect to login
     if (!token) {
       return NextResponse.redirect(new URL('/', req.url))
     }
+    
+    // EMERGENCY ROUTING: Handle Maintenance Office immediately  
+    if (token?.role === 'Maintenance Office' && pathname === '/dashboard') {
+      return NextResponse.redirect(new URL('/dean/dashboard', req.url))
+    }
+    
+    console.log("[Middleware] Token data:", {
+      email: token.email,
+      role: token.role,
+      roleType: typeof token.role,
+      roleLength: token.role?.length,
+      isDepartmentHead: (token as any)?.isDepartmentHead,
+      isDepartmentHeadType: typeof (token as any)?.isDepartmentHead,
+      pathname: pathname,
+      allTokenKeys: Object.keys(token || {})
+    })
+
+    // If already authenticated and hitting public entry points, send to role dashboard
+    if (pathname === '/' || pathname === '/login') {
+      // Send to centralized dashboard first; role mapping happens below
+      return NextResponse.redirect(new URL('/dashboard', req.url))
+    }
 
     // Role-based dashboard redirections
-    if (pathname === '/dashboard' || pathname === '/teacher/dashboard') {
+    if (pathname === '/dashboard') {
       if (token?.role === 'Admin') {
-        return NextResponse.redirect(new URL('/admin/console', req.url))
+        return NextResponse.redirect(new URL('/admin/dashboard', req.url))
       }
-      if (token?.role === 'Dean/Program Head') {
+      
+      // Check for office heads (isDepartmentHead) who should go to dean dashboard
+      // This includes any Non Teaching Staff role that is marked as office head
+      console.log("[Middleware] Checking office head status:", {
+        email: token?.email,
+        role: token?.role,
+        isDepartmentHead: (token as any)?.isDepartmentHead,
+        isDepartmentHeadType: typeof (token as any)?.isDepartmentHead,
+        tokenKeys: Object.keys(token || {})
+      })
+      
+      if ((token as any)?.isDepartmentHead === true) {
+        console.log("[Middleware] ✅ Office head detected - redirecting to dean dashboard:", {
+          role: token?.role,
+          isDepartmentHead: (token as any)?.isDepartmentHead,
+          redirectingTo: '/dean/dashboard'
+        })
+        return NextResponse.redirect(new URL('/dean/dashboard', req.url))
+      } else {
+        console.log("[Middleware] ❌ Not an office head - continuing with role-based routing:", {
+          role: token?.role,
+          isDepartmentHead: (token as any)?.isDepartmentHead
+        })
+      }
+      
+      if (token?.role === 'Teacher/Instructor' || token?.role === 'Teacher') {
+        return NextResponse.redirect(new URL('/teacher/dashboard', req.url))
+      }
+      if (token?.role === 'Dean/Program Head' || token?.role === 'Department Head') {
         return NextResponse.redirect(new URL('/dean/dashboard', req.url))
       }
-      if (token?.role === 'Finance Department') {
+      if (token?.role === 'Finance Department' || token?.role === 'Finance Officer' || token?.role === 'Finance Office Head') {
         return NextResponse.redirect(new URL('/finance/dashboard', req.url))
       }
-      // Teachers stay at /teacher/dashboard
+      if (token?.role === 'Office Clerk') {
+        return NextResponse.redirect(new URL('/teacher/dashboard', req.url))
+      }
+      
+      // FALLBACK: Check for specific Non Teaching Staff roles that should be office heads
+      // This is a backup in case isDepartmentHead is not properly set in the token
+      const nonTeachingOfficeRoles = [
+        'Guidance Office', 'Registrar Office', 'Maintenance Office', 
+        'Administrative Assistant', 'Library Staff', 'IT Support',
+        'Security Office', 'Clinic Staff', 'Accounting Office'
+      ]
+      
+      console.log("[Middleware] 🔍 FALLBACK CHECK:", {
+        tokenRole: token?.role,
+        tokenRoleType: typeof token?.role,
+        fallbackRoles: nonTeachingOfficeRoles,
+        isInFallbackList: nonTeachingOfficeRoles.includes(token?.role || ''),
+        exactMatchTest: token?.role === 'Maintenance Office'
+      })
+      
+      if (nonTeachingOfficeRoles.includes(token?.role || '')) {
+        console.log("[Middleware] 🔄 FALLBACK: Non-teaching office role detected - redirecting to dean dashboard:", {
+          role: token?.role,
+          fallbackReason: 'Role-based routing for office staff',
+          redirectingTo: '/dean/dashboard'
+        })
+        return NextResponse.redirect(new URL('/dean/dashboard', req.url))
+      }
+      
+      // Default to teacher dashboard
+      console.log("[Middleware] 📍 Default routing - redirecting to teacher dashboard:", {
+        role: token?.role,
+        reason: 'No specific role match found'
+      })
+      return NextResponse.redirect(new URL('/teacher/dashboard', req.url))
     }
 
     // Admin-only routes
@@ -41,21 +133,51 @@ export default withAuth(
 
     // Dean/Program Head routes
     if (pathname.startsWith('/dean')) {
-      if (token?.role !== 'Dean/Program Head' && token?.role !== 'Admin') {
+      // EMERGENCY ACCESS: Always allow Maintenance Office
+      if (token?.role === 'Maintenance Office') {
+        console.log("[Middleware] 🚨 EMERGENCY ACCESS: Maintenance Office granted dean access")
+        return NextResponse.next()
+      }
+      
+      // Allow admin, dean/program head, department head, and any office head
+      const isDean = token?.role === 'Dean/Program Head' || token?.role === 'Department Head'
+      const isAdmin = token?.role === 'Admin'
+      const isOfficeHead = (token as any)?.isDepartmentHead // Any role marked as office head
+      
+      // FALLBACK: Allow specific Non Teaching Staff roles
+      const nonTeachingOfficeRoles = [
+        'Guidance Office', 'Registrar Office', 'Maintenance Office', 
+        'Administrative Assistant', 'Library Staff', 'IT Support',
+        'Security Office', 'Clinic Staff', 'Accounting Office'
+      ]
+      const isFallbackOfficeRole = nonTeachingOfficeRoles.includes(token?.role || '')
+      
+      console.log("[Middleware] Dean route access check:", {
+        pathname,
+        role: token?.role,
+        isDean,
+        isAdmin,
+        isOfficeHead: isOfficeHead,
+        isFallbackOfficeRole,
+        isDepartmentHead: (token as any)?.isDepartmentHead
+      })
+      
+      if (!isDean && !isAdmin && !isOfficeHead && !isFallbackOfficeRole) {
+        console.log("[Middleware] Access denied to dean route for:", token?.role)
         return NextResponse.redirect(new URL('/unauthorized', req.url))
       }
     }
 
     // Teacher routes
     if (pathname.startsWith('/teacher')) {
-      if (token?.role !== 'Teacher/Instructor' && !['Admin'].includes(token?.role || '')) {
+      if ((token?.role !== 'Teacher/Instructor' && token?.role !== 'Teacher') && !['Admin'].includes(token?.role || '')) {
         // Redirect to their appropriate dashboard
         if (token?.role === 'Finance Department') {
           return NextResponse.redirect(new URL('/finance/dashboard', req.url))
         } else if (token?.role === 'Dean/Program Head') {
           return NextResponse.redirect(new URL('/dean/dashboard', req.url))
         } else if (token?.role === 'Admin') {
-          return NextResponse.redirect(new URL('/admin/console', req.url))
+          return NextResponse.redirect(new URL('/admin/dashboard', req.url))
         }
       }
     }
@@ -65,16 +187,33 @@ export default withAuth(
   {
     callbacks: {
       authorized: ({ token, req }) => {
-        // Allow access to login and public pages without token
         const pathname = req.nextUrl.pathname
+        
+        console.log("[Middleware] 🔍 AUTHORIZED CALLBACK:", {
+          pathname: pathname,
+          hasToken: !!token,
+          tokenRole: token?.role,
+          tokenEmail: token?.email
+        })
+        
+        // Allow access to login and public pages without token
         if (pathname.startsWith('/auth') || 
             pathname === '/' || 
-            pathname.startsWith('/api/auth')) {
+            pathname.startsWith('/api/auth') ||
+            pathname.startsWith('/api/account')) {
+          console.log("[Middleware] ✅ Public route allowed:", pathname)
           return true
         }
 
         // Check if user has token for protected routes
-        return !!token
+        const hasValidToken = !!token
+        console.log("[Middleware] 🔍 Protected route check:", {
+          pathname: pathname,
+          hasValidToken: hasValidToken,
+          result: hasValidToken ? 'ALLOWED' : 'DENIED'
+        })
+        
+        return hasValidToken
       }
     }
   }

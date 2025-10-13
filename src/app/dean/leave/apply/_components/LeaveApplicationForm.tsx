@@ -18,7 +18,8 @@ import {
   FileText,
   ArrowLeft,
   Upload,
-  Loader2
+  Loader2,
+  UserCheck
 } from "lucide-react"
 import { toast } from "sonner"
 import DateValidation from "@/components/date-validation"
@@ -37,7 +38,14 @@ interface LeaveLimit {
   }
 }
 
-
+interface LeaveBalance {
+  allowedDays: number
+  usedDays: number
+  remainingDays: number
+  leaveType: {
+    name: string
+  }
+}
 
 interface UserData {
   name: string
@@ -48,10 +56,12 @@ interface UserData {
 interface LeaveApplicationFormProps {
   leaveType: LeaveType | null
   leaveLimit: LeaveLimit | null
+  leaveBalance: LeaveBalance | null
   userData: UserData | null
   onSubmit: (data: FormData) => void
   onBack: () => void
   isLoading: boolean
+  isDean?: boolean
 }
 
 // Base schema for common fields
@@ -91,10 +101,12 @@ const emergencySchema = baseSchema.extend({
 export function LeaveApplicationForm({ 
   leaveType, 
   leaveLimit, 
+  leaveBalance, 
   userData, 
   onSubmit, 
   onBack, 
-  isLoading 
+  isLoading,
+  isDean = false
 }: LeaveApplicationFormProps) {
   const [numberOfDays, setNumberOfDays] = useState(0)
   const [maxEndDate, setMaxEndDate] = useState<string | null>("")
@@ -164,33 +176,35 @@ export function LeaveApplicationForm({
 
   // Set max end date based on start date and remaining days
   useEffect(() => {
-    if (startDate && leaveLimit) {
+    if (startDate && leaveBalance) {
       const start = new Date(startDate)
-      // For dean applications, allow unlimited date selection
-      // since deans can approve applications regardless of leave limits
-      const maxDays = null // No restriction for dean applications
+      // Only restrict max days if user has remaining days (PAID leave)
+      // For UNPAID leave (remainingDays = 0), allow unlimited date selection
+      const maxDays = leaveBalance.remainingDays > 0 
+        ? Math.min(leaveBalance.remainingDays, leaveLimit?.daysAllowed || 0)
+        : null // No restriction for unpaid leave
       
       if (maxDays !== null) {
         const maxEnd = new Date(start)
         maxEnd.setDate(start.getDate() + maxDays - 1)
         setMaxEndDate(maxEnd.toISOString().split('T')[0])
       } else {
-        setMaxEndDate(null) // Remove restriction for dean applications
+        setMaxEndDate(null) // Remove restriction for unpaid leave
       }
     }
-  }, [startDate, leaveLimit])
+  }, [startDate, leaveBalance, leaveLimit])
 
   // Set minimum start date to today
   const today = new Date().toISOString().split('T')[0]
 
   const handleFormSubmit = (data: FormData) => {
-    if (!leaveType || !userData) return
+    if (!leaveType || !leaveBalance || !userData) return
 
     const formData = {
       ...data,
       numberOfDays,
       leaveTypeId: leaveType.leave_type_id,
-              paymentStatus: 'PAID',
+      paymentStatus: leaveBalance.remainingDays > 0 ? 'PAID' : 'UNPAID',
       name: userData.name,
       department: userData.department,
       dateCreated: new Date().toISOString(),
@@ -215,7 +229,7 @@ export function LeaveApplicationForm({
     }
   }
 
-  if (!leaveType || !userData) {
+  if (!leaveType || !leaveBalance || !userData) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
@@ -234,6 +248,19 @@ export function LeaveApplicationForm({
           Complete your {leaveType.name} application
         </p>
       </div>
+
+      {/* Dean Auto-Approval Notice */}
+      {isDean && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center gap-2">
+            <UserCheck className="h-5 w-5 text-blue-600" />
+            <h3 className="text-sm font-medium text-blue-800">Auto-Approval Notice</h3>
+          </div>
+          <p className="mt-1 text-sm text-blue-700">
+            As a Dean/Program Head, your leave application will be automatically approved upon submission.
+          </p>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
         {/* Employee Information */}
@@ -284,12 +311,12 @@ export function LeaveApplicationForm({
                 <Label>Payment Status</Label>
                 <div className="flex items-center gap-2">
                   <Input 
-                    value="PAID" 
+                    value={leaveBalance.remainingDays > 0 ? 'PAID' : 'UNPAID'} 
                     disabled 
                     className="bg-gray-50" 
                   />
-                  <Badge variant="default">
-                    PAID
+                  <Badge variant={leaveBalance.remainingDays > 0 ? "default" : "secondary"}>
+                    {leaveBalance.remainingDays > 0 ? 'PAID' : 'UNPAID'}
                   </Badge>
                 </div>
               </div>
@@ -341,9 +368,9 @@ export function LeaveApplicationForm({
                     Maximum: {new Date(maxEndDate).toLocaleDateString()}
                   </p>
                 )}
-                {!maxEndDate && (
-                  <p className="text-xs text-blue-600 mt-1">
-                    📅 No date restriction (dean application)
+                {!maxEndDate && leaveBalance.remainingDays === 0 && (
+                  <p className="text-xs text-orange-600 mt-1">
+                    ⚠️ No date restriction (unpaid leave)
                   </p>
                 )}
               </div>
@@ -445,7 +472,39 @@ export function LeaveApplicationForm({
           </Card>
         )}
 
-
+        {/* Leave Balance Summary */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Leave Balance Summary
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="text-center p-4 bg-blue-50 rounded-lg">
+                <div className="text-lg font-bold text-blue-600">{leaveBalance.allowedDays}</div>
+                <div className="text-sm text-gray-600">Allowed Days</div>
+              </div>
+              <div className="text-center p-4 bg-orange-50 rounded-lg">
+                <div className="text-lg font-bold text-orange-600">{leaveBalance.usedDays}</div>
+                <div className="text-sm text-gray-600">Used Days</div>
+              </div>
+              <div className="text-center p-4 bg-green-50 rounded-lg">
+                <div className="text-lg font-bold text-green-600">{leaveBalance.remainingDays}</div>
+                <div className="text-sm text-gray-600">Remaining Days</div>
+              </div>
+            </div>
+            {numberOfDays > leaveBalance.remainingDays && (
+              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-yellow-800 text-sm">
+                  ⚠️ You are requesting {numberOfDays} days but only have {leaveBalance.remainingDays} days remaining. 
+                  The excess days will be unpaid.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Action Buttons */}
         <div className="flex justify-between pt-6">
@@ -469,7 +528,7 @@ export function LeaveApplicationForm({
                 Submitting...
               </>
             ) : (
-              'Submit Application'
+              isDean ? 'Submit & Auto-Approve' : 'Submit Application'
             )}
           </Button>
         </div>

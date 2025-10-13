@@ -80,6 +80,10 @@ function handleMessage(clientId, data) {
       handleCalendarUpdate(clientId, data);
       break;
     
+    case 'account_approval_update':
+      handleAccountApprovalUpdate(clientId, data);
+      break;
+    
     default:
       console.log(`Unknown message type: ${data.type}`);
   }
@@ -178,6 +182,15 @@ function handleCalendarUpdate(clientId, data) {
   broadcastToUser(userId, {
     type: 'calendar_update',
     data: calendarData,
+    timestamp: Date.now()
+  });
+}
+
+function handleAccountApprovalUpdate(clientId, data) {
+  const { userId, approvalData } = data;
+  broadcastToUser(userId, {
+    type: 'account_approval_update',
+    data: approvalData,
     timestamp: Date.now()
   });
 }
@@ -337,6 +350,21 @@ app.post('/api/realtime/calendar', (req, res) => {
     data: data,
     timestamp: Date.now()
   });
+  
+  res.json({ success: true });
+});
+
+// Account approval update endpoint
+app.post('/notify', (req, res) => {
+  const { type, userId, data } = req.body;
+  
+  if (type === 'account_approval_update') {
+    broadcastToUser(userId, {
+      type: 'account_approval_update',
+      data: data,
+      timestamp: Date.now()
+    });
+  }
   
   res.json({ success: true });
 });

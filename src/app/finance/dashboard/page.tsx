@@ -6,40 +6,62 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { 
-  DollarSign, 
-  TrendingUp, 
-  TrendingDown, 
-  Calculator,
-  FileText,
-  BarChart3,
+  FileText, 
+  Clock,
+  CheckCircle,
+  XCircle,
+  Users,
+  Building,
   ArrowRight,
   Calendar,
-  CreditCard,
-  PieChart
+  Eye,
+  TrendingUp
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 interface FinanceStats {
-  totalBudget: number
-  usedBudget: number
-  pendingPayroll: number
-  monthlyExpenses: number
-  budgetUsage: number
-  savingsRate: number
-  remainingBudget: number
+  totalApplications: number
+  pendingApplications: number
+  deanApprovedApplications: number
+  approvedApplications: number
+  deniedApplications: number
+  totalDepartments: number
+  totalFaculty: number
+  recentApplications: Array<{
+    id: number
+    userName: string
+    userEmail: string
+    departmentName: string
+    leaveType: string
+    status: string
+    startDate: string
+    endDate: string
+    appliedAt: string
+  }>
+  applicationsByStatus: Array<{
+    status: string
+    count: number
+  }>
+  applicationsByDepartment: Array<{
+    departmentName: string
+    count: number
+  }>
 }
 
 export default function FinanceDashboardPage() {
   const { data: session } = useSession()
   const router = useRouter()
   const [stats, setStats] = useState<FinanceStats>({
-    totalBudget: 0,
-    usedBudget: 0,
-    pendingPayroll: 0,
-    monthlyExpenses: 0,
-    budgetUsage: 0,
-    savingsRate: 0,
-    remainingBudget: 0
+    totalApplications: 0,
+    pendingApplications: 0,
+    deanApprovedApplications: 0,
+    approvedApplications: 0,
+    deniedApplications: 0,
+    totalDepartments: 0,
+    totalFaculty: 0,
+    recentApplications: [],
+    applicationsByStatus: [],
+    applicationsByDepartment: []
   })
   const [isLoading, setIsLoading] = useState(true)
 
@@ -50,15 +72,7 @@ export default function FinanceDashboardPage() {
         if (response.ok) {
           const data = await response.json()
           if (data.success) {
-            setStats({
-              totalBudget: data.data.totalBudget,
-              usedBudget: data.data.usedBudget,
-              budgetUsage: data.data.budgetUsage,
-              remainingBudget: data.data.remainingBudget,
-              monthlyExpenses: data.data.monthlyExpenses,
-              pendingPayroll: data.data.pendingPayroll,
-              savingsRate: data.data.savingsRate
-            })
+            setStats(data.data)
           }
         }
       } catch (error) {
@@ -78,7 +92,15 @@ export default function FinanceDashboardPage() {
     )
   }
 
-  const remainingBudget = stats.totalBudget - stats.usedBudget
+  const getStatusBadgeColor = (status: string) => {
+    switch (status) {
+      case 'PENDING': return 'bg-yellow-100 text-yellow-800'
+      case 'DEAN_APPROVED': return 'bg-blue-100 text-blue-800'
+      case 'APPROVED': return 'bg-green-100 text-green-800'
+      case 'DENIED': return 'bg-red-100 text-red-800'
+      default: return 'bg-gray-100 text-gray-800'
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -87,125 +109,134 @@ export default function FinanceDashboardPage() {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Finance Dashboard</h1>
           <p className="text-muted-foreground text-sm sm:text-base">
-            Welcome back, {session?.user?.name}. Manage financial reports, budgets, and payroll.
+            Welcome back, {session?.user?.name}. Review and approve leave applications.
           </p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
-          <Button onClick={() => router.push('/finance/reports')} variant="outline">
-            <FileText className="mr-2 h-4 w-4" />
-            View Reports
+          <Button onClick={() => router.push('/finance/applications')} variant="outline">
+            <Eye className="mr-2 h-4 w-4" />
+            View Applications
           </Button>
-          <Button onClick={() => router.push('/finance/payroll')}>
-            <Calculator className="mr-2 h-4 w-4" />
-            Payroll
+          <Button onClick={() => router.push('/finance/reports')}>
+            <FileText className="mr-2 h-4 w-4" />
+            Reports
           </Button>
         </div>
       </div>
 
-      {/* Financial Statistics Cards */}
+      {/* Leave Application Statistics Cards */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Budget</CardTitle>
-            <DollarSign className="h-4 w-4 text-green-600" />
+            <CardTitle className="text-sm font-medium">Total Applications</CardTitle>
+            <FileText className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₱{stats.totalBudget.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{stats.totalApplications}</div>
             <p className="text-xs text-muted-foreground">
-              Annual allocation
+              All time applications
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Budget Usage</CardTitle>
-            <BarChart3 className="h-4 w-4 text-blue-600" />
+            <CardTitle className="text-sm font-medium">Pending Review</CardTitle>
+            <Clock className="h-4 w-4 text-yellow-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.budgetUsage}%</div>
+            <div className="text-2xl font-bold">{stats.pendingApplications}</div>
             <p className="text-xs text-muted-foreground">
-              ₱{stats.usedBudget.toLocaleString()} used
+              Awaiting dean approval
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Payroll</CardTitle>
-            <TrendingUp className="h-4 w-4 text-orange-600" />
+            <CardTitle className="text-sm font-medium">Ready for Finance</CardTitle>
+            <TrendingUp className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₱{stats.pendingPayroll.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{stats.deanApprovedApplications}</div>
             <p className="text-xs text-muted-foreground">
-              This week's payroll
+              Dean approved, awaiting finance
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Monthly Expenses</CardTitle>
-            <TrendingDown className="h-4 w-4 text-red-600" />
+            <CardTitle className="text-sm font-medium">Approved</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₱{stats.monthlyExpenses.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{stats.approvedApplications}</div>
             <p className="text-xs text-muted-foreground">
-              Current month
+              Fully approved applications
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Additional Financial Metrics */}
+      {/* Additional Application Metrics */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Remaining Budget</CardTitle>
-            <CreditCard className="h-4 w-4 text-green-600" />
+            <CardTitle className="text-sm font-medium">Denied Applications</CardTitle>
+            <XCircle className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₱{remainingBudget.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{stats.deniedApplications}</div>
             <p className="text-xs text-muted-foreground">
-              Available for use
+              Rejected applications
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Savings Rate</CardTitle>
-            <PieChart className="h-4 w-4 text-purple-600" />
+            <CardTitle className="text-sm font-medium">Total Departments</CardTitle>
+            <Building className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.savingsRate}%</div>
+            <div className="text-2xl font-bold">{stats.totalDepartments}</div>
             <p className="text-xs text-muted-foreground">
-              Budget efficiency
+              Active departments
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Payroll Status</CardTitle>
-            <Calculator className="h-4 w-4 text-blue-600" />
+            <CardTitle className="text-sm font-medium">Total Faculty</CardTitle>
+            <Users className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">On Track</div>
+            <div className="text-2xl font-bold">{stats.totalFaculty}</div>
             <p className="text-xs text-muted-foreground">
-              All payments scheduled
+              Faculty members
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Quick Actions */}
+      {/* Quick Actions and Recent Applications */}
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Quick Actions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
+            <Button 
+              variant="outline" 
+              className="w-full justify-start"
+              onClick={() => router.push('/finance/applications')}
+            >
+              <Eye className="mr-2 h-4 w-4" />
+              Review Applications
+              <ArrowRight className="ml-auto h-4 w-4" />
+            </Button>
             <Button 
               variant="outline" 
               className="w-full justify-start"
@@ -218,19 +249,10 @@ export default function FinanceDashboardPage() {
             <Button 
               variant="outline" 
               className="w-full justify-start"
-              onClick={() => router.push('/finance/payroll')}
+              onClick={() => router.push('/finance/calendar')}
             >
-              <Calculator className="mr-2 h-4 w-4" />
-              Process Payroll
-              <ArrowRight className="ml-auto h-4 w-4" />
-            </Button>
-            <Button 
-              variant="outline" 
-              className="w-full justify-start"
-              onClick={() => router.push('/finance/budget')}
-            >
-              <DollarSign className="mr-2 h-4 w-4" />
-              Budget Management
+              <Calendar className="mr-2 h-4 w-4" />
+              View Calendar
               <ArrowRight className="ml-auto h-4 w-4" />
             </Button>
           </CardContent>
@@ -238,26 +260,38 @@ export default function FinanceDashboardPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Budget Overview</CardTitle>
+            <CardTitle>Recent Applications</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Total Budget:</span>
-                <span className="font-medium">₱{stats.totalBudget.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Used Budget:</span>
-                <span className="font-medium">₱{stats.usedBudget.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Remaining:</span>
-                <span className="font-medium text-green-600">₱{remainingBudget.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Usage Rate:</span>
-                <span className="font-medium">{stats.budgetUsage}%</span>
-              </div>
+            <div className="space-y-3">
+              {stats.recentApplications.length > 0 ? (
+                stats.recentApplications.slice(0, 3).map((app) => (
+                  <div key={app.id} className="flex items-center justify-between p-2 border rounded-lg">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{app.userName}</p>
+                      <p className="text-xs text-muted-foreground">{app.leaveType}</p>
+                      <p className="text-xs text-muted-foreground">{app.departmentName}</p>
+                    </div>
+                    <Badge className={getStatusBadgeColor(app.status)}>
+                      {app.status.replace('_', ' ')}
+                    </Badge>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No recent applications
+                </p>
+              )}
+              {stats.recentApplications.length > 3 && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="w-full"
+                  onClick={() => router.push('/finance/applications')}
+                >
+                  View All Applications
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>

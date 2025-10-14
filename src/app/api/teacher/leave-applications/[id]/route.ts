@@ -3,6 +3,123 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    // Get current user
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    }
+
+    const resolvedParams = await params
+    const applicationId = resolvedParams.id
+    
+    // Parse the application ID (format: leave_123, travel_123, or just 123)
+    let actualId: number
+    let type: 'leave' | 'travel'
+    
+    if (applicationId.includes('_')) {
+      const parts = applicationId.split('_')
+      type = parts[0] as 'leave' | 'travel'
+      actualId = parseInt(parts[1])
+    } else {
+      // Default to leave application for backward compatibility (when just numeric ID is passed)
+      type = 'leave'
+      actualId = parseInt(applicationId)
+    }
+    
+    if (isNaN(actualId)) {
+      return NextResponse.json({ error: "Invalid application ID" }, { status: 400 })
+    }
+
+    if (type === 'leave') {
+      // Get leave application
+      const application = await prisma.leaveApplication.findFirst({
+        where: {
+          leave_application_id: actualId,
+          users_id: user.users_id // Ensure user can only access their own applications
+        },
+        include: {
+          leaveType: {
+            select: {
+              name: true
+            }
+          }
+        }
+      })
+
+      if (!application) {
+        return NextResponse.json({ error: "Application not found" }, { status: 404 })
+      }
+
+      return NextResponse.json({
+        leave_application_id: application.leave_application_id,
+        startDate: application.startDate.toISOString(),
+        endDate: application.endDate.toISOString(),
+        reason: application.reason,
+        leave_type_id: application.leave_type_id,
+        numberOfDays: application.numberOfDays,
+        hours: application.hours,
+        status: application.status,
+        specificPurpose: application.specificPurpose,
+        descriptionOfSickness: application.descriptionOfSickness,
+        paymentStatus: application.paymentStatus,
+        medicalProof: application.medicalProof,
+        leaveType: application.leaveType
+      })
+
+    } else if (type === 'travel') {
+      // Get travel order
+      const travelOrder = await prisma.travelOrder.findFirst({
+        where: {
+          travel_order_id: actualId,
+          users_id: user.users_id // Ensure user can only access their own travel orders
+        }
+      })
+
+      if (!travelOrder) {
+        return NextResponse.json({ error: "Travel order not found" }, { status: 404 })
+      }
+
+      return NextResponse.json({
+        travel_order_id: travelOrder.travel_order_id,
+        dateOfTravel: travelOrder.dateOfTravel.toISOString(),
+        expectedReturn: travelOrder.expectedReturn.toISOString(),
+        destination: travelOrder.destination,
+        purpose: travelOrder.purpose,
+        transportationFee: travelOrder.transportationFee,
+        seminarConferenceFee: travelOrder.seminarConferenceFee,
+        mealsAccommodations: travelOrder.mealsAccommodations,
+        totalCashRequested: travelOrder.totalCashRequested,
+        supportingDocuments: travelOrder.supportingDocuments,
+        remarks: travelOrder.remarks,
+        status: travelOrder.status
+      })
+    }
+
+    return NextResponse.json({ error: "Invalid application type" }, { status: 400 })
+
+  } catch (error) {
+    console.error('Error fetching application:', error)
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    )
+  }
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

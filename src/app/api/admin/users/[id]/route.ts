@@ -83,9 +83,6 @@ export async function DELETE(
         leaveApplications: {
           select: { leave_application_id: true, status: true }
         },
-        leaveBalances: {
-          select: { leave_balance_id: true }
-        },
         probation: {
           select: { probation_id: true, status: true }
         },
@@ -101,10 +98,16 @@ export async function DELETE(
       }
     })
 
+    // Get leave balances separately (no relation exists)
+    const leaveBalances = await prisma.leaveBalance.findMany({
+      where: { users_id: userId },
+      select: { leave_balance_id: true }
+    })
+
     // Log what will be deleted (for audit purposes)
     const deletionSummary = {
       leaveApplications: relatedRecords?.leaveApplications?.length || 0,
-      leaveBalances: relatedRecords?.leaveBalances?.length || 0,
+      leaveBalances: leaveBalances?.length || 0,
       probation: relatedRecords?.probation ? 1 : 0,
       travelOrders: relatedRecords?.travelOrders?.length || 0,
       notifications: relatedRecords?.notifications?.length || 0,
@@ -125,7 +128,7 @@ export async function DELETE(
       }
 
       // Delete leave balances
-      if (relatedRecords?.leaveBalances && relatedRecords.leaveBalances.length > 0) {
+      if (leaveBalances && leaveBalances.length > 0) {
         await tx.leaveBalance.deleteMany({
           where: { users_id: userId }
         })

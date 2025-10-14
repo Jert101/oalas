@@ -76,7 +76,7 @@ export async function DELETE(
       )
     }
 
-    // Check for related records that would prevent deletion
+    // Get related records for logging purposes (but don't prevent deletion)
     const relatedRecords = await prisma.user.findUnique({
       where: { users_id: userId },
       include: {
@@ -101,87 +101,74 @@ export async function DELETE(
       }
     })
 
-    // Check for leave applications
-    if (relatedRecords?.leaveApplications && relatedRecords.leaveApplications.length > 0) {
-      const pendingApps = relatedRecords.leaveApplications.filter(app => 
-        app.status === 'PENDING' || app.status === 'DEAN_APPROVED'
-      )
-      if (pendingApps.length > 0) {
-        return NextResponse.json(
-          { 
-            error: `Cannot delete user. They have ${pendingApps.length} pending leave application(s). Please approve, reject, or cancel them first.`,
-            details: {
-              totalApplications: relatedRecords.leaveApplications.length,
-              pendingApplications: pendingApps.length,
-              applications: relatedRecords.leaveApplications.map(app => ({
-                id: app.leave_application_id,
-                status: app.status
-              }))
-            }
-          },
-          { status: 400 }
-        )
+    // Log what will be deleted (for audit purposes)
+    const deletionSummary = {
+      leaveApplications: relatedRecords?.leaveApplications?.length || 0,
+      leaveBalances: relatedRecords?.leaveBalances?.length || 0,
+      probation: relatedRecords?.probation ? 1 : 0,
+      travelOrders: relatedRecords?.travelOrders?.length || 0,
+      notifications: relatedRecords?.notifications?.length || 0,
+      accounts: relatedRecords?.accounts?.length || 0
+    }
+
+    console.log(`Deleting user ${existingUser.name} (${existingUser.email}) with related records:`, deletionSummary)
+
+    // Delete the user and all related records using a transaction
+    await prisma.$transaction(async (tx) => {
+      // Delete related records first (in case of foreign key constraints)
+      
+      // Delete leave applications
+      if (relatedRecords?.leaveApplications && relatedRecords.leaveApplications.length > 0) {
+        await tx.leaveApplication.deleteMany({
+          where: { users_id: userId }
+        })
       }
-    }
 
-    // Check for leave balances
-    if (relatedRecords?.leaveBalances && relatedRecords.leaveBalances.length > 0) {
-      return NextResponse.json(
-        { 
-          error: `Cannot delete user. They have ${relatedRecords.leaveBalances.length} leave balance record(s). Please contact system administrator.`,
-          details: {
-            leaveBalances: relatedRecords.leaveBalances.length
-          }
-        },
-        { status: 400 }
-      )
-    }
-
-    // Check for active probation
-    if (relatedRecords?.probation && relatedRecords.probation.status === 'ACTIVE') {
-      return NextResponse.json(
-        { 
-          error: "Cannot delete user. They have an active probation record.",
-          details: {
-            probationId: relatedRecords.probation.probation_id,
-            status: relatedRecords.probation.status
-          }
-        },
-        { status: 400 }
-      )
-    }
-
-    // Check for pending travel orders
-    if (relatedRecords?.travelOrders && relatedRecords.travelOrders.length > 0) {
-      const pendingTravel = relatedRecords.travelOrders.filter(order => 
-        order.status === 'PENDING' || order.status === 'DEAN_APPROVED'
-      )
-      if (pendingTravel.length > 0) {
-        return NextResponse.json(
-          { 
-            error: `Cannot delete user. They have ${pendingTravel.length} pending travel order(s). Please approve, reject, or cancel them first.`,
-            details: {
-              totalTravelOrders: relatedRecords.travelOrders.length,
-              pendingTravelOrders: pendingTravel.length,
-              travelOrders: relatedRecords.travelOrders.map(order => ({
-                id: order.travel_order_id,
-                status: order.status
-              }))
-            }
-          },
-          { status: 400 }
-        )
+      // Delete leave balances
+      if (relatedRecords?.leaveBalances && relatedRecords.leaveBalances.length > 0) {
+        await tx.leaveBalance.deleteMany({
+          where: { users_id: userId }
+        })
       }
-    }
 
-    // Delete the user (cascade will handle accounts, sessions, and notifications)
-    await prisma.user.delete({
-      where: { users_id: userId }
+      // Delete probation records
+      if (relatedRecords?.probation) {
+        await tx.probation.deleteMany({
+          where: { users_id: userId }
+        })
+      }
+
+      // Delete travel orders
+      if (relatedRecords?.travelOrders && relatedRecords.travelOrders.length > 0) {
+        await tx.travelOrder.deleteMany({
+          where: { users_id: userId }
+        })
+      }
+
+      // Delete notifications
+      if (relatedRecords?.notifications && relatedRecords.notifications.length > 0) {
+        await tx.notification.deleteMany({
+          where: { users_id: userId }
+        })
+      }
+
+      // Delete accounts (sessions will be handled by cascade)
+      if (relatedRecords?.accounts && relatedRecords.accounts.length > 0) {
+        await tx.account.deleteMany({
+          where: { users_id: userId }
+        })
+      }
+
+      // Finally, delete the user
+      await tx.user.delete({
+        where: { users_id: userId }
+      })
     })
 
     return NextResponse.json({
       success: true,
-      message: "User deleted successfully"
+      message: `User deleted successfully. Also deleted: ${deletionSummary.leaveApplications} leave applications, ${deletionSummary.leaveBalances} leave balances, ${deletionSummary.probation} probation record, ${deletionSummary.travelOrders} travel orders, ${deletionSummary.notifications} notifications, and ${deletionSummary.accounts} accounts.`,
+      deletedRecords: deletionSummary
     })
 
   } catch (error) {

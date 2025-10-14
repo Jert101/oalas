@@ -55,6 +55,13 @@ export async function GET(
             startDate: true,
             endDate: true
           }
+        },
+        leaveType: {
+          select: {
+            leave_type_id: true,
+            name: true,
+            description: true
+          }
         }
       }
     })
@@ -66,23 +73,8 @@ export async function GET(
       )
     }
 
-    // Get leave type information
-    const leaveType = await prisma.leave_types.findUnique({
-      where: {
-        leave_type_id: application.leave_type_id
-      },
-      select: {
-        leave_type_id: true,
-        name: true,
-        description: true
-      }
-    })
-
-    // Add leave type information to application
-    const applicationWithLeaveType = {
-      ...application,
-      leaveType: leaveType || null
-    }
+    // Add leave type information to application (already included in the query)
+    const applicationWithLeaveType = application
 
     return NextResponse.json({
       success: true,

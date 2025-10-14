@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
               }
             }
           },
-          leave_types: {
+          leaveType: {
             select: {
               name: true
             }

@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
             }
           }
         },
-        leave_types: {
+        leaveType: {
           select: {
             name: true,
             description: true
@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
           pendingApplications: applications.filter(app => app.status === 'PENDING' || app.status === 'DEAN_APPROVED').length,
           deniedApplications: applications.filter(app => app.status === 'DENIED').length,
           byLeaveType: applications.reduce((acc, app) => {
-            const type = app.leave_types?.name || 'Unknown'
+            const type = app.leaveType?.name || 'Unknown'
             if (!acc[type]) {
               acc[type] = { total: 0, approved: 0, pending: 0, denied: 0 }
             }
@@ -114,7 +114,7 @@ export async function GET(req: NextRequest) {
               email: app.user.email,
               department: app.user.department?.name || 'Not assigned'
             },
-            leaveType: app.leave_types?.name || 'Unknown',
+            leaveType: app.leaveType?.name || 'Unknown',
             status: app.status,
             startDate: app.startDate,
             endDate: app.endDate,

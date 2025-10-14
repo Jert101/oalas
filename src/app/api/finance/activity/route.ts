@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
             }
           }
         },
-        leave_types: {
+        leaveType: {
           select: {
             name: true
           }
@@ -47,20 +47,20 @@ export async function GET(req: NextRequest) {
     // Format activity data
     const activities = recentActivity.map(app => {
       let activityType = 'applied'
-      let description = `${app.user.name} applied for ${app.leave_types?.name || 'leave'}`
+      let description = `${app.user.name} applied for ${app.leaveType?.name || 'leave'}`
       let timestamp = app.appliedAt
 
       if (app.status === 'APPROVED') {
         activityType = 'approved'
-        description = `${app.reviewer?.name || 'Finance Officer'} approved ${app.user.name}'s ${app.leave_types?.name || 'leave'} application`
+        description = `${app.reviewer?.name || 'Finance Officer'} approved ${app.user.name}'s ${app.leaveType?.name || 'leave'} application`
         timestamp = app.reviewedAt || app.appliedAt
       } else if (app.status === 'DENIED') {
         activityType = 'denied'
-        description = `${app.reviewer?.name || 'Finance Officer'} denied ${app.user.name}'s ${app.leave_types?.name || 'leave'} application`
+        description = `${app.reviewer?.name || 'Finance Officer'} denied ${app.user.name}'s ${app.leaveType?.name || 'leave'} application`
         timestamp = app.reviewedAt || app.appliedAt
       } else if (app.status === 'DEAN_APPROVED') {
         activityType = 'dean_approved'
-        description = `Dean approved ${app.user.name}'s ${app.leave_types?.name || 'leave'} application - ready for finance review`
+        description = `Dean approved ${app.user.name}'s ${app.leaveType?.name || 'leave'} application - ready for finance review`
         timestamp = app.reviewedAt || app.appliedAt
       }
 
@@ -76,7 +76,7 @@ export async function GET(req: NextRequest) {
           department: app.user.department?.name || 'Not assigned'
         },
         application: {
-          leaveType: app.leave_types?.name || 'Unknown',
+          leaveType: app.leaveType?.name || 'Unknown',
           status: app.status,
           startDate: app.startDate,
           endDate: app.endDate,

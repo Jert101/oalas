@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
         },
         leaveApplications: {
           include: {
-            leave_types: {
+            leaveType: {
               select: {
                 name: true
               }

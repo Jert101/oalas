@@ -38,6 +38,13 @@ export async function GET(request: NextRequest) {
             startDate: true,
             endDate: true
           }
+        },
+        leaveType: {
+          select: {
+            leave_type_id: true,
+            name: true,
+            description: true
+          }
         }
       },
       orderBy: {
@@ -45,29 +52,8 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Get leave types for all applications
-    const leaveTypeIds = [...new Set(applications.map(app => app.leave_type_id))]
-    const leaveTypes = await prisma.leave_types.findMany({
-      where: {
-        leave_type_id: {
-          in: leaveTypeIds
-        }
-      },
-      select: {
-        leave_type_id: true,
-        name: true,
-        description: true
-      }
-    })
-
-    // Create a map for quick lookup
-    const leaveTypeMap = new Map(leaveTypes.map(lt => [lt.leave_type_id, lt]))
-
-    // Add leave type information to applications
-    const applicationsWithLeaveTypes = applications.map(app => ({
-      ...app,
-      leaveType: leaveTypeMap.get(app.leave_type_id) || null
-    }))
+    // Add leave type information to applications (already included in the query)
+    const applicationsWithLeaveTypes = applications
 
     const data = {
       applications: applicationsWithLeaveTypes,

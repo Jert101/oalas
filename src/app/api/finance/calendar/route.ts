@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
             }
           }
         },
-        leave_types: {
+        leaveType: {
           select: {
             name: true,
             description: true
@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
       
       return {
         id: app.leave_application_id,
-        title: `${app.user.name} - ${app.leave_types?.name || 'Leave'}`,
+        title: `${app.user.name} - ${app.leaveType?.name || 'Leave'}`,
         start: startDate.toISOString(),
         end: endDate.toISOString(),
         allDay: true,
@@ -91,7 +91,7 @@ export async function GET(req: NextRequest) {
           profilePicture: app.user.profilePicture,
           department: app.user.department?.name || 'Not assigned'
         },
-        leaveType: app.leave_types?.name || 'Unknown',
+        leaveType: app.leaveType?.name || 'Unknown',
         numberOfDays: app.numberOfDays,
         reason: app.reason,
         appliedAt: app.appliedAt

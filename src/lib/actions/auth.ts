@@ -82,12 +82,11 @@ export async function resetPassword(values: z.infer<typeof resetPasswordSchema>)
     const hashedPassword = await bcrypt.hash(password, 12)
 
     await prisma.user.update({
-      where: { id: user.id },
+      where: { users_id: user.users_id },
       data: {
         password: hashedPassword,
         resetToken: null,
         resetTokenExpiry: null,
-
       }
     })
 

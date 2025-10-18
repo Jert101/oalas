@@ -1,279 +1,431 @@
-import { prisma } from './prisma'
-import { advancedCache } from './advanced-cache'
+import { PrismaClient } from '@prisma/client'
 
-interface QueryCache {
-  [key: string]: {
-    data: any
-    timestamp: number
-    ttl: number
-  }
+/**
+ * Database Optimizer for OALA System
+ * Provides optimized database operations with caching and connection pooling
+ */
+
+interface CacheConfig {
+  ttl: number // Time to live in milliseconds
+  maxSize: number // Maximum cache entries
 }
 
 class DatabaseOptimizer {
-  private queryCache: QueryCache = {}
-  private connectionPool: any[] = []
-  private maxPoolSize = 10
-  private queryStats = {
-    totalQueries: 0,
-    cachedQueries: 0,
-    slowQueries: 0,
-  }
+  private static instance: DatabaseOptimizer
+  private prisma: PrismaClient
+  private cache: Map<string, { data: any; timestamp: number; ttl: number }>
+  private cacheConfig: CacheConfig
 
-  // Smart query caching
-  private getQueryKey(query: string, params: any): string {
-    return `db:${query}:${JSON.stringify(params)}`
-  }
-
-  // Cache database query results
-  private async cacheQuery<T>(key: string, queryFn: () => Promise<T>, ttl: number = 30000): Promise<T> {
-    const cached = this.queryCache[key]
-    if (cached && Date.now() - cached.timestamp < cached.ttl) {
-      this.queryStats.cachedQueries++
-      return cached.data
-    }
-
-    const startTime = Date.now()
-    const result = await queryFn()
-    const queryTime = Date.now() - startTime
-
-    // Log slow queries
-    if (queryTime > 1000) {
-      console.warn(`🐌 Slow query detected: ${queryTime}ms`)
-      this.queryStats.slowQueries++
-    }
-
-    // Cache the result
-    this.queryCache[key] = {
-      data: result,
-      timestamp: Date.now(),
-      ttl
-    }
-
-    this.queryStats.totalQueries++
-    return result
-  }
-
-  // Optimized user queries
-  async getUserWithRelations(email: string) {
-    const key = this.getQueryKey('getUserWithRelations', { email })
-    return this.cacheQuery(key, () => 
-      prisma.user.findUnique({
-        where: { email },
-        include: {
-          department: true,
-          role: true,
-          status: true
+  private constructor() {
+    this.prisma = new PrismaClient({
+      log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+      datasources: {
+        db: {
+          url: process.env.DATABASE_URL
         }
-      }), 60000 // 1 minute cache
-    )
-  }
-
-  // Optimized dashboard queries
-  async getDashboardStats(userId: string, role: string) {
-    const key = this.getQueryKey('getDashboardStats', { userId, role })
-    return this.cacheQuery(key, async () => {
-      const [currentPeriod, userStats] = await Promise.all([
-        prisma.calendarPeriod.findFirst({
-          where: { isCurrent: true },
-          select: {
-            calendar_period_id: true,
-            academicYear: true,
-            startDate: true,
-            endDate: true
-          }
-        }),
-        this.getUserStats(userId, role)
-      ])
-
-      return {
-        currentPeriod,
-        ...userStats
       }
-    }, 30000) // 30 seconds cache
-  }
-
-  // Optimized application queries
-  async getApplicationsWithFilters(filters: any) {
-    const key = this.getQueryKey('getApplicationsWithFilters', filters)
-    return this.cacheQuery(key, () => 
-      prisma.leaveApplication.findMany({
-        where: filters,
-        include: {
-          user: {
-            select: {
-              name: true,
-              email: true,
-              profilePicture: true,
-              department: {
-                select: { name: true }
-              }
-            }
-          },
-          leaveType: {
-            select: { name: true }
-          }
-        },
-        orderBy: { appliedAt: 'desc' }
-      }), 60000 // 1 minute cache
-    )
-  }
-
-  // Batch multiple queries
-  async batchQueries(queries: Array<{ key: string; query: () => Promise<any>; ttl?: number }>) {
-    const results: any = {}
-    
-    await Promise.all(
-      queries.map(async ({ key, query, ttl = 30000 }) => {
-        results[key] = await this.cacheQuery(key, query, ttl)
-      })
-    )
-
-    return results
-  }
-
-  // Get user statistics based on role
-  private async getUserStats(userId: string, role: string) {
-    switch (role) {
-      case 'Dean/Program Head':
-        return this.getDeanStats(userId)
-      case 'Finance Department':
-        return this.getFinanceStats()
-      case 'Teacher/Instructor':
-        return this.getTeacherStats(userId)
-      default:
-        return this.getAdminStats()
-    }
-  }
-
-  private async getDeanStats(userId: string) {
-    const user = await prisma.user.findUnique({
-      where: { users_id: userId },
-      select: { department_id: true }
     })
 
-    if (!user?.department_id) return {}
+    this.cache = new Map()
+    this.cacheConfig = {
+      ttl: 5 * 60 * 1000, // 5 minutes default TTL
+      maxSize: 1000 // Maximum 1000 cached entries
+    }
+  }
 
-    const [facultyCount, applications] = await Promise.all([
-      prisma.user.count({
-        where: {
-          department_id: user.department_id,
-          role: { name: 'Teacher/Instructor' }
+  public static getInstance(): DatabaseOptimizer {
+    if (!DatabaseOptimizer.instance) {
+      DatabaseOptimizer.instance = new DatabaseOptimizer()
+    }
+    return DatabaseOptimizer.instance
+  }
+
+  /**
+   * Get cached data or fetch from database
+   */
+  private async getCachedOrFetch<T>(
+    key: string,
+    fetcher: () => Promise<T>,
+    ttl?: number
+  ): Promise<T> {
+    // Clean expired entries
+    this.cleanExpiredCache()
+
+    // Check cache first
+    const cached = this.cache.get(key)
+    if (cached && Date.now() - cached.timestamp < cached.ttl) {
+      return cached.data as T
+    }
+
+    // Fetch from database
+    const data = await fetcher()
+    
+    // Cache the result
+    this.setCache(key, data, ttl)
+    
+    return data
+  }
+
+  /**
+   * Set cache entry
+   */
+  private setCache(key: string, data: any, ttl?: number): void {
+    // Remove oldest entries if cache is full
+    if (this.cache.size >= this.cacheConfig.maxSize) {
+      const oldestKey = this.cache.keys().next().value
+      this.cache.delete(oldestKey)
+    }
+
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now(),
+      ttl: ttl || this.cacheConfig.ttl
+    })
+  }
+
+  /**
+   * Clean expired cache entries
+   */
+  private cleanExpiredCache(): void {
+    const now = Date.now()
+    for (const [key, entry] of this.cache.entries()) {
+      if (now - entry.timestamp >= entry.ttl) {
+        this.cache.delete(key)
+      }
+    }
+  }
+
+  /**
+   * Clear cache by pattern
+   */
+  public clearCache(pattern?: string): void {
+    if (!pattern) {
+      this.cache.clear()
+      return
+    }
+
+    for (const key of this.cache.keys()) {
+      if (key.includes(pattern)) {
+        this.cache.delete(key)
+      }
+    }
+  }
+
+  /**
+   * Optimized user lookup with caching
+   */
+  public async getUserByEmail(email: string, include?: any) {
+    const cacheKey = `user:${email}:${JSON.stringify(include || {})}`
+    
+    return this.getCachedOrFetch(cacheKey, async () => {
+      return this.prisma.user.findUnique({
+        where: { email },
+        include: include || {
+          role: true,
+          department: true,
+          status: true
         }
-      }),
-      prisma.leaveApplication.findMany({
-        where: {
-          user: { department_id: user.department_id }
-        },
-        select: { status: true }
+      })
+    })
+  }
+
+  /**
+   * Optimized role lookup with caching
+   */
+  public async getRoles(categoryId?: number) {
+    const cacheKey = `roles:${categoryId || 'all'}`
+    
+    return this.getCachedOrFetch(cacheKey, async () => {
+      const whereClause = categoryId ? { category_id: categoryId } : {}
+      
+      return this.prisma.role.findMany({
+        where: whereClause,
+        orderBy: { name: "asc" },
+        include: {
+          category: true
+        }
+      })
+    })
+  }
+
+  /**
+   * Optimized departments lookup with caching
+   */
+  public async getDepartments() {
+    const cacheKey = 'departments:all'
+    
+    return this.getCachedOrFetch(cacheKey, async () => {
+      return this.prisma.department.findMany({
+        orderBy: { name: "asc" }
+      })
+    })
+  }
+
+  /**
+   * Optimized leave types lookup with caching
+   */
+  public async getLeaveTypes() {
+    const cacheKey = 'leave_types:active'
+    
+    return this.getCachedOrFetch(cacheKey, async () => {
+      return this.prisma.leave_types.findMany({
+        where: { isActive: true },
+        orderBy: { name: "asc" }
+      })
+    })
+  }
+
+  /**
+   * Optimized dashboard stats with caching
+   */
+  public async getDashboardStats(userRole: string, userId?: string) {
+    const cacheKey = `dashboard_stats:${userRole}:${userId || 'global'}`
+    
+    return this.getCachedOrFetch(cacheKey, async () => {
+      switch (userRole) {
+        case 'Admin':
+          return this.getAdminDashboardStats()
+        case 'Dean/Program Head':
+        case 'Department Head':
+          return this.getDeanDashboardStats(userId!)
+        case 'Finance Department':
+        case 'Finance Officer':
+        case 'Finance Office Head':
+          return this.getFinanceDashboardStats()
+        case 'Teacher/Instructor':
+        case 'Teacher':
+          return this.getTeacherDashboardStats(userId!)
+        default:
+          return {}
+      }
+    }, 2 * 60 * 1000) // 2 minutes TTL for dashboard stats
+  }
+
+  /**
+   * Admin dashboard stats
+   */
+  private async getAdminDashboardStats() {
+    const [
+      totalUsers,
+      activeUsers,
+      totalApplications,
+      pendingApplications,
+      totalDepartments,
+      recentActivities
+    ] = await Promise.all([
+      this.prisma.user.count(),
+      this.prisma.user.count({ where: { isActive: true } }),
+      this.prisma.leaveApplication.count(),
+      this.prisma.leaveApplication.count({ where: { status: 'PENDING' } }),
+      this.prisma.department.count(),
+      this.prisma.leaveApplication.findMany({
+        take: 5,
+        orderBy: { appliedAt: 'desc' },
+        include: {
+          user: { select: { name: true, email: true } },
+          leaveType: { select: { name: true } }
+        }
       })
     ])
 
     return {
-      facultyCount,
-      pendingApplications: applications.filter(a => a.status === 'PENDING').length,
-      approvedApplications: applications.filter(a => a.status === 'APPROVED').length,
-      deniedApplications: applications.filter(a => a.status === 'DENIED').length
+      totalUsers,
+      activeUsers,
+      totalApplications,
+      pendingApplications,
+      totalDepartments,
+      recentActivities
     }
   }
 
-  private async getFinanceStats() {
-    const [applications, departments, faculty] = await Promise.all([
-      prisma.leaveApplication.findMany({
-        select: { status: true }
+  /**
+   * Dean dashboard stats
+   */
+  private async getDeanDashboardStats(userId: string) {
+    const [
+      pendingApplications,
+      approvedApplications,
+      facultyMembers,
+      recentApplications
+    ] = await Promise.all([
+      this.prisma.leaveApplication.count({
+        where: { status: 'PENDING' }
       }),
-      prisma.department.count(),
-      prisma.user.count({
+      this.prisma.leaveApplication.count({
+        where: { status: 'DEAN_APPROVED' }
+      }),
+      this.prisma.user.count({
         where: {
           role: {
             name: { in: ['Teacher/Instructor', 'Non Teaching Personnel'] }
           }
         }
-      })
-    ])
-
-    return {
-      totalApplications: applications.length,
-      pendingApplications: applications.filter(a => a.status === 'PENDING').length,
-      approvedApplications: applications.filter(a => a.status === 'APPROVED').length,
-      deniedApplications: applications.filter(a => a.status === 'DENIED').length,
-      deanApprovedPendingFinance: applications.filter(a => a.status === 'DEAN_APPROVED').length,
-      totalDepartments: departments,
-      totalFaculty: faculty
-    }
-  }
-
-  private async getTeacherStats(userId: string) {
-    const [applications, leaveBalance] = await Promise.all([
-      prisma.leaveApplication.findMany({
-        where: { users_id: userId },
-        select: { status: true, appliedAt: true },
-        orderBy: { appliedAt: 'desc' },
-        take: 5
       }),
-      prisma.leaveBalance.findMany({
-        where: { users_id: userId },
-        select: { allowedDays: true, usedDays: true, remainingDays: true }
+      this.prisma.leaveApplication.findMany({
+        take: 5,
+        orderBy: { appliedAt: 'desc' },
+        include: {
+          user: { select: { name: true, email: true } },
+          leaveType: { select: { name: true } }
+        }
       })
     ])
 
     return {
-      recentApplications: applications,
-      leaveBalance: leaveBalance.reduce((acc, balance) => ({
-        allowed: acc.allowed + balance.allowedDays,
-        used: acc.used + balance.usedDays,
-        remaining: acc.remaining + balance.remainingDays
-      }), { allowed: 0, used: 0, remaining: 0 })
+      pendingApplications,
+      approvedApplications,
+      facultyMembers,
+      recentApplications
     }
   }
 
-  private async getAdminStats() {
-    const [users, departments, applications] = await Promise.all([
-      prisma.user.count(),
-      prisma.department.count(),
-      prisma.leaveApplication.count()
+  /**
+   * Finance dashboard stats
+   */
+  private async getFinanceDashboardStats() {
+    const [
+      deanApprovedApplications,
+      approvedApplications,
+      deniedApplications,
+      totalDepartments
+    ] = await Promise.all([
+      this.prisma.leaveApplication.count({
+        where: { status: 'DEAN_APPROVED' }
+      }),
+      this.prisma.leaveApplication.count({
+        where: { status: 'APPROVED' }
+      }),
+      this.prisma.leaveApplication.count({
+        where: { status: 'DENIED' }
+      }),
+      this.prisma.department.count()
     ])
 
     return {
-      totalUsers: users,
-      totalDepartments: departments,
-      totalApplications: applications
+      deanApprovedApplications,
+      approvedApplications,
+      deniedApplications,
+      totalDepartments
     }
   }
 
-  // Clear query cache
-  clearCache(): void {
-    this.queryCache = {}
-  }
+  /**
+   * Teacher dashboard stats
+   */
+  private async getTeacherDashboardStats(userId: string) {
+    const [
+      totalApplications,
+      pendingApplications,
+      approvedApplications,
+      leaveBalance
+    ] = await Promise.all([
+      this.prisma.leaveApplication.count({
+        where: { users_id: userId }
+      }),
+      this.prisma.leaveApplication.count({
+        where: { users_id: userId, status: 'PENDING' }
+      }),
+      this.prisma.leaveApplication.count({
+        where: { users_id: userId, status: 'APPROVED' }
+      }),
+      this.prisma.leaveBalance.findMany({
+        where: { users_id: userId },
+        include: { leaveType: true }
+      })
+    ])
 
-  // Get query statistics
-  getStats() {
     return {
-      ...this.queryStats,
-      cacheHitRate: this.queryStats.totalQueries > 0 
-        ? (this.queryStats.cachedQueries / this.queryStats.totalQueries * 100).toFixed(2) + '%'
-        : '0%',
-      cacheSize: Object.keys(this.queryCache).length
+      totalApplications,
+      pendingApplications,
+      approvedApplications,
+      leaveBalance
     }
   }
 
-  // Optimize database connection
-  async optimizeConnection(): Promise<void> {
-    // This would typically involve connection pooling configuration
-    // For Prisma, we rely on its built-in connection management
-    console.log('🔧 Database connection optimized')
+  /**
+   * Batch operations for better performance
+   */
+  public async batchUpdateLeaveBalances(updates: Array<{
+    userId: string
+    leaveTypeId: number
+    balance: number
+  }>) {
+    const promises = updates.map(update =>
+      this.prisma.leaveBalance.upsert({
+        where: {
+          users_id_leave_type_id: {
+            users_id: update.userId,
+            leave_type_id: update.leaveTypeId
+          }
+        },
+        update: { balance: update.balance },
+        create: {
+          users_id: update.userId,
+          leave_type_id: update.leaveTypeId,
+          balance: update.balance,
+          status_id: 1 // Active status
+        }
+      })
+    )
+
+    return Promise.all(promises)
+  }
+
+  /**
+   * Optimized search with pagination
+   */
+  public async searchUsers(
+    query: string,
+    page: number = 1,
+    limit: number = 10,
+    filters?: any
+  ) {
+    const skip = (page - 1) * limit
+    const whereClause = {
+      ...filters,
+      OR: [
+        { name: { contains: query, mode: 'insensitive' as const } },
+        { email: { contains: query, mode: 'insensitive' as const } }
+      ]
+    }
+
+    const [users, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where: whereClause,
+        skip,
+        take: limit,
+        include: {
+          role: true,
+          department: true,
+          status: true
+        },
+        orderBy: { name: 'asc' }
+      }),
+      this.prisma.user.count({ where: whereClause })
+    ])
+
+    return {
+      users,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    }
+  }
+
+  /**
+   * Cleanup and close connections
+   */
+  public async cleanup(): Promise<void> {
+    this.cache.clear()
+    await this.prisma.$disconnect()
   }
 }
 
-export const databaseOptimizer = new DatabaseOptimizer()
+// Export singleton instance
+export const databaseOptimizer = DatabaseOptimizer.getInstance()
 
-
-
-
-
-
-
-
-
-
-
-
+// Export class for testing
+export { DatabaseOptimizer }

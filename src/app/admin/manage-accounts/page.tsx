@@ -24,7 +24,10 @@ import {
   Eye as EyeIcon,
   EyeOff as EyeOffIcon,
   Loader2,
-  Key
+  Key,
+  ChevronLeft,
+  ChevronRight,
+  X
 } from "lucide-react"
 
 import { AppSidebar } from "@/components/app-sidebar"
@@ -168,6 +171,16 @@ export default function ManageAccountsPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
+  
+  // Enhanced filtering states
+  const [roleFilter, setRoleFilter] = useState<string>("all")
+  const [departmentFilter, setDepartmentFilter] = useState<string>("all")
+  const [roleCategoryFilter, setRoleCategoryFilter] = useState<string>("all")
+  const [activeFilter, setActiveFilter] = useState<string>("all")
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1)
+  const [usersPerPage] = useState(10)
   const [userStats, setUserStats] = useState<UserStats>({
     total: 0,
     admin: 0,
@@ -335,17 +348,9 @@ export default function ManageAccountsPage() {
     setUserStats(stats)
   }
 
-  // Real-time search and filter
+  // Enhanced filtering and pagination logic
   useEffect(() => {
     let filtered = users
-
-    // Debug: Log the users and their statuses
-    console.log('All users:', users.map(user => ({ 
-      name: user.name, 
-      status: user.status?.name,
-      statusId: user.status_id 
-    })))
-    console.log('Current statusFilter:', statusFilter)
 
     // Search filter
     if (searchTerm.trim()) {
@@ -353,24 +358,61 @@ export default function ManageAccountsPage() {
       filtered = filtered.filter(user => 
         user.users_id.toLowerCase().includes(term) ||
         user.name.toLowerCase().includes(term) ||
-        user.email.toLowerCase().includes(term)
+        user.email.toLowerCase().includes(term) ||
+        user.firstName?.toLowerCase().includes(term) ||
+        user.lastName?.toLowerCase().includes(term)
       )
     }
 
     // Status filter
     if (statusFilter !== "all") {
-      console.log('Filtering by status:', statusFilter)
-      const beforeFilter = filtered.length
-      filtered = filtered.filter(user => {
-        const matches = user.status?.name === statusFilter
-        console.log(`User ${user.name}: status="${user.status?.name}", matches=${matches}`)
-        return matches
-      })
-      console.log(`Filter result: ${beforeFilter} -> ${filtered.length}`)
+      filtered = filtered.filter(user => user.status?.name === statusFilter)
+    }
+
+    // Role filter
+    if (roleFilter !== "all") {
+      filtered = filtered.filter(user => user.role?.name === roleFilter)
+    }
+
+    // Department filter
+    if (departmentFilter !== "all") {
+      filtered = filtered.filter(user => user.department?.name === departmentFilter)
+    }
+
+    // Role category filter
+    if (roleCategoryFilter !== "all") {
+      const selectedCategory = roleCategories.find(cat => cat.category_id.toString() === roleCategoryFilter)
+      if (selectedCategory) {
+        filtered = filtered.filter(user => user.role?.category_id === selectedCategory.category_id)
+      }
+    }
+
+    // Active/Inactive filter
+    if (activeFilter !== "all") {
+      const isActive = activeFilter === "active"
+      filtered = filtered.filter(user => user.isActive === isActive)
     }
 
     setFilteredUsers(filtered)
-  }, [users, searchTerm, statusFilter])
+    setCurrentPage(1) // Reset to first page when filters change
+  }, [users, searchTerm, statusFilter, roleFilter, departmentFilter, roleCategoryFilter, activeFilter, roleCategories])
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredUsers.length / usersPerPage)
+  const startIndex = (currentPage - 1) * usersPerPage
+  const endIndex = startIndex + usersPerPage
+  const currentUsers = filteredUsers.slice(startIndex, endIndex)
+
+  // Clear all filters function
+  const clearAllFilters = () => {
+    setSearchTerm("")
+    setStatusFilter("all")
+    setRoleFilter("all")
+    setDepartmentFilter("all")
+    setRoleCategoryFilter("all")
+    setActiveFilter("all")
+    setCurrentPage(1)
+  }
 
   // Load data on component mount
   // Initial data loading
@@ -757,28 +799,141 @@ export default function ManageAccountsPage() {
           <CardTitle>Search and Filter</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
+          {/* Enhanced Search and Filters */}
+          <div className="space-y-4">
+            {/* Search Bar */}
+            <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by ID, name, or email..."
+                placeholder="Search by ID, name, email, first name, or last name..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
             </div>
-            <div className="flex gap-2">
+            
+            {/* Filter Row 1 */}
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger>
                   <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="Filter by status" />
+                  <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="Regular">Regular</SelectItem>
-                  <SelectItem value="Probation">Probation</SelectItem>
+                  {statuses.map(status => (
+                    <SelectItem key={status.status_id} value={status.name}>
+                      {status.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+
+              <Select value={roleFilter} onValueChange={setRoleFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Roles</SelectItem>
+                  {roles.map(role => (
+                    <SelectItem key={role.role_id} value={role.name}>
+                      {role.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Department" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Departments</SelectItem>
+                  {departments.map(dept => (
+                    <SelectItem key={dept.department_id} value={dept.name}>
+                      {dept.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={roleCategoryFilter} onValueChange={setRoleCategoryFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Role Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {roleCategories.map(category => (
+                    <SelectItem key={category.category_id} value={category.category_id.toString()}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={activeFilter} onValueChange={setActiveFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Active Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Users</SelectItem>
+                  <SelectItem value="active">Active Only</SelectItem>
+                  <SelectItem value="inactive">Inactive Only</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Clear Filters Button */}
+            <div className="flex justify-between items-center">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={clearAllFilters}
+                className="flex items-center gap-2"
+              >
+                <X className="h-4 w-4" />
+                Clear All Filters
+              </Button>
+              
+              {/* Active Filters Display */}
+              <div className="flex flex-wrap gap-2">
+                {searchTerm && (
+                  <Badge variant="secondary" className="flex items-center gap-1">
+                    Search: {searchTerm}
+                    <X className="h-3 w-3 cursor-pointer" onClick={() => setSearchTerm("")} />
+                  </Badge>
+                )}
+                {statusFilter !== "all" && (
+                  <Badge variant="secondary" className="flex items-center gap-1">
+                    Status: {statusFilter}
+                    <X className="h-3 w-3 cursor-pointer" onClick={() => setStatusFilter("all")} />
+                  </Badge>
+                )}
+                {roleFilter !== "all" && (
+                  <Badge variant="secondary" className="flex items-center gap-1">
+                    Role: {roleFilter}
+                    <X className="h-3 w-3 cursor-pointer" onClick={() => setRoleFilter("all")} />
+                  </Badge>
+                )}
+                {departmentFilter !== "all" && (
+                  <Badge variant="secondary" className="flex items-center gap-1">
+                    Dept: {departmentFilter}
+                    <X className="h-3 w-3 cursor-pointer" onClick={() => setDepartmentFilter("all")} />
+                  </Badge>
+                )}
+                {roleCategoryFilter !== "all" && (
+                  <Badge variant="secondary" className="flex items-center gap-1">
+                    Category: {roleCategories.find(c => c.category_id.toString() === roleCategoryFilter)?.name}
+                    <X className="h-3 w-3 cursor-pointer" onClick={() => setRoleCategoryFilter("all")} />
+                  </Badge>
+                )}
+                {activeFilter !== "all" && (
+                  <Badge variant="secondary" className="flex items-center gap-1">
+                    {activeFilter === "active" ? "Active Only" : "Inactive Only"}
+                    <X className="h-3 w-3 cursor-pointer" onClick={() => setActiveFilter("all")} />
+                  </Badge>
+                )}
+              </div>
             </div>
           </div>
         </CardContent>
@@ -789,8 +944,8 @@ export default function ManageAccountsPage() {
         <CardHeader>
           <CardTitle>All Accounts ({filteredUsers.length})</CardTitle>
           <CardDescription>
-            {searchTerm && `Showing results for "${searchTerm}"`}
-            {statusFilter !== "all" && ` | Status: ${statusFilter}`}
+            Showing {startIndex + 1}-{Math.min(endIndex, filteredUsers.length)} of {filteredUsers.length} users
+            {totalPages > 1 && ` | Page ${currentPage} of ${totalPages}`}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -814,7 +969,7 @@ export default function ManageAccountsPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredUsers.map((user) => (
+                  currentUsers.map((user) => (
                     <TableRow key={user.users_id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
@@ -897,6 +1052,64 @@ export default function ManageAccountsPage() {
               </TableBody>
             </Table>
           </div>
+          
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4">
+              <div className="text-sm text-muted-foreground">
+                Showing {startIndex + 1} to {Math.min(endIndex, filteredUsers.length)} of {filteredUsers.length} users
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
+                </Button>
+                
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={currentPage === pageNum ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setCurrentPage(pageNum)}
+                        className="w-8 h-8 p-0"
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                </div>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

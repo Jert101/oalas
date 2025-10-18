@@ -80,7 +80,8 @@ export default function RolesPage() {
     try {
       const res = await fetch("/api/admin/roles")
       if (!res.ok) throw new Error()
-      setItems(await res.json())
+      const data = await res.json()
+      setItems(data.roles || [])
     } catch { toast.error("Failed to load roles") }
   }
 

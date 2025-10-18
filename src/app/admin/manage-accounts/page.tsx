@@ -100,6 +100,7 @@ interface User {
   role?: {
     role_id: number
     name: string
+    category_id?: number
   }
   status?: {
     status_id: number
@@ -123,6 +124,12 @@ interface User {
   updatedAt?: string
 }
 
+interface RoleCategory {
+  category_id: number
+  name: string
+  description?: string
+}
+
 interface UserStats {
   total: number
   admin: number
@@ -136,16 +143,17 @@ interface UserStats {
 
 // Validation schema for editing users
 const editUserSchema = z.object({
-  name: z.string().min(1, "Name is required"),
   firstName: z.string().optional(),
   middleName: z.string().optional(),
   lastName: z.string().optional(),
   suffix: z.string().optional(),
   email: z.string().email("Invalid email address"),
+  roleCategory: z.string().min(1, "Role category is required"),
   roleId: z.string().min(1, "Role is required"),
-  departmentId: z.string().min(1, "Department is required"),
+  departmentId: z.string().optional(),
   statusId: z.string().min(1, "Status is required"),
-  isActive: z.boolean()
+  isActive: z.boolean(),
+  isDepartmentHead: z.string().optional()
 })
 
 type EditUserFormData = z.infer<typeof editUserSchema>
@@ -183,26 +191,31 @@ export default function ManageAccountsPage() {
   const [isResettingPwd, setIsResettingPwd] = useState(false)
 
   // Reference data for dropdowns
-  const [roles, setRoles] = useState<{role_id: number, name: string}[]>([])
-  const [departments, setDepartments] = useState<{department_id: number, name: string}[]>([])
+  const [roleCategories, setRoleCategories] = useState<RoleCategory[]>([])
+  const [roles, setRoles] = useState<{role_id: number, name: string, category_id?: number}[]>([])
+  const [departments, setDepartments] = useState<{department_id: number, name: string, category?: 'NON_TEACHING_PERSONNEL' | 'ACADEMIC_DEPARTMENT'}[]>([])
   const [statuses, setStatuses] = useState<{status_id: number, name: string}[]>([])
+  const [availableDepartments, setAvailableDepartments] = useState<{department_id: number, name: string, category?: 'NON_TEACHING_PERSONNEL' | 'ACADEMIC_DEPARTMENT'}[]>([])
 
   // Form setup
   const form = useForm<EditUserFormData>({
     resolver: zodResolver(editUserSchema),
     defaultValues: {
-      name: "",
       firstName: "",
       middleName: "",
       lastName: "",
       suffix: "",
       email: "",
+      roleCategory: "",
       roleId: "",
       departmentId: "",
       statusId: "",
-      isActive: true
+      isActive: true,
+      isDepartmentHead: "no"
     }
   })
+
+  const watchedRoleCategory = form.watch("roleCategory")
 
   // Authentication check
   useEffect(() => {
@@ -351,11 +364,20 @@ export default function ManageAccountsPage() {
     const loadReferenceData = async () => {
       try {
         console.log('🔍 Loading reference data...')
-        const [rolesRes, departmentsRes, statusesRes] = await Promise.all([
+        const [roleCategoriesRes, rolesRes, departmentsRes, statusesRes] = await Promise.all([
+          fetch("/api/admin/role-categories"),
           fetch("/api/admin/roles"),
           fetch("/api/admin/departments"),
           fetch("/api/admin/statuses")
         ])
+
+        if (roleCategoriesRes.ok) {
+          const roleCategoriesData = await roleCategoriesRes.json()
+          console.log('✅ Role categories loaded:', roleCategoriesData.roleCategories?.length || 0)
+          setRoleCategories(roleCategoriesData.roleCategories || [])
+        } else {
+          console.error('❌ Failed to fetch role categories:', roleCategoriesRes.status)
+        }
 
         if (rolesRes.ok) {
           const rolesData = await rolesRes.json()
@@ -367,8 +389,7 @@ export default function ManageAccountsPage() {
 
         if (departmentsRes.ok) {
           const departmentsData = await departmentsRes.json()
-          console.log('✅ Departments loaded:', departmentsData.departments?.length || 0)
-          setDepartments(departmentsData.departments || [])
+          setDepartments(departmentsData || [])
         } else {
           console.error('❌ Failed to fetch departments:', departmentsRes.status)
         }
@@ -389,6 +410,64 @@ export default function ManageAccountsPage() {
     loadReferenceData()
   }, [])
 
+  // Fetch roles when role category changes
+  useEffect(() => {
+    if (!watchedRoleCategory) {
+      setRoles([])
+      form.setValue("roleId", "")
+      return
+    }
+
+    const fetchRolesByCategory = async () => {
+      try {
+        const response = await fetch(`/api/roles?category_id=${watchedRoleCategory}`)
+        if (response.ok) {
+          const data = await response.json()
+          setRoles(data.roles || [])
+        }
+      } catch (error) {
+        console.error("Error fetching roles by category:", error)
+      }
+    }
+
+    fetchRolesByCategory()
+  }, [watchedRoleCategory, form])
+
+  // Filter departments based on selected role category
+  useEffect(() => {
+    if (watchedRoleCategory && departments.length > 0) {
+      const selectedCategory = roleCategories.find(c => c.category_id.toString() === watchedRoleCategory)
+      
+      if (selectedCategory) {
+        let filteredDepartments: {department_id: number, name: string, category?: 'NON_TEACHING_PERSONNEL' | 'ACADEMIC_DEPARTMENT'}[] = []
+        
+        if (selectedCategory.name === "Teaching Staff") {
+          // Show all departments for Teaching Staff
+          filteredDepartments = departments
+        } else if (selectedCategory.name === "Department Head") {
+          // Show only academic departments for Department Head
+          filteredDepartments = departments.filter(d => d.category === "ACADEMIC_DEPARTMENT")
+        } else if (selectedCategory.name === "Non Teaching Staff") {
+          // Show only non-teaching departments for Non Teaching Staff
+          filteredDepartments = departments.filter(d => d.category === "NON_TEACHING_PERSONNEL")
+        } else if (selectedCategory.name === "Finance") {
+          // Show only non-teaching departments for Finance
+          filteredDepartments = departments.filter(d => d.category === "NON_TEACHING_PERSONNEL")
+        } else if (selectedCategory.name === "Administration") {
+          // Admin can see all departments
+          filteredDepartments = departments
+        } else {
+          // For other categories, show all departments
+          filteredDepartments = departments
+        }
+        
+        setAvailableDepartments(filteredDepartments)
+      }
+    } else {
+      setAvailableDepartments([])
+    }
+  }, [watchedRoleCategory, departments, roleCategories])
+
   // Action handlers
   const handleView = (user: User) => {
     setSelectedUser(user)
@@ -402,27 +481,30 @@ export default function ManageAccountsPage() {
       email: user.email,
       roleId: user.role_id,
       roleName: user.role?.name,
+      roleCategoryId: user.role?.category_id,
       departmentId: user.department_id,
       departmentName: user.department?.name,
       statusId: user.status_id,
       statusName: user.status?.name,
-      isActive: user.isActive
+      isActive: user.isActive,
+      isDepartmentHead: user.isDepartmentHead
     })
     
     setSelectedUser(user)
     
     // Populate form with user data
     const formData = {
-      name: user.name,
       firstName: user.firstName || "",
       middleName: user.middleName || "",
       lastName: user.lastName || "",
       suffix: user.suffix || "",
       email: user.email,
+      roleCategory: user.role?.category_id?.toString() || "",
       roleId: user.role_id?.toString() || "",
       departmentId: user.department_id?.toString() || "",
       statusId: user.status_id?.toString() || "",
-      isActive: user.isActive
+      isActive: user.isActive,
+      isDepartmentHead: user.isDepartmentHead ? "yes" : "no"
     }
     
     console.log('📝 Form data being set:', formData)
@@ -1043,22 +1125,6 @@ export default function ManageAccountsPage() {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleEditSubmit)} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Name Field */}
-                <div className="md:col-span-2">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Display Name *</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Full display name" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
 
                 {/* First Name */}
                 <FormField
@@ -1137,71 +1203,186 @@ export default function ManageAccountsPage() {
                   />
                 </div>
 
-                {/* Role */}
-                <FormField
-                  control={form.control}
-                  name="roleId"
-                  render={({ field }) => {
-                    console.log('🎨 Role field render:', {
-                      fieldValue: field.value,
-                      rolesCount: roles.length,
-                      roles: roles.map(r => ({ id: r.role_id, name: r.name }))
-                    })
-                    return (
-                      <FormItem>
-                        <FormLabel>Role *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select role" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {roles.map((role) => (
-                              <SelectItem key={role.role_id} value={role.role_id.toString()}>
-                                {role.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )
-                  }}
-                />
+                {/* Current Role and Department Display */}
+                <div className="md:col-span-2 space-y-2">
+                  <div className="p-3 bg-gray-50 rounded-md">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Current Assignment</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <span className="font-medium">Role:</span> {selectedUser?.role?.name || "Not assigned"}
+                      </div>
+                      <div>
+                        <span className="font-medium">Department:</span> {selectedUser?.department?.name || "Not assigned"}
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-                {/* Department */}
-                <FormField
-                  control={form.control}
-                  name="departmentId"
-                  render={({ field }) => {
-                    console.log('🎨 Department field render:', {
-                      fieldValue: field.value,
-                      departmentsCount: departments.length,
-                      departments: departments.map(d => ({ id: d.department_id, name: d.name }))
-                    })
-                    return (
+                {/* Role Category */}
+                <div className="md:col-span-2">
+                  <FormField
+                    control={form.control}
+                    name="roleCategory"
+                    render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Department *</FormLabel>
+                        <FormLabel>Role Category *</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select department" />
+                              <SelectValue placeholder="Select role category" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {departments.map((department) => (
-                              <SelectItem key={department.department_id} value={department.department_id.toString()}>
-                                {department.name}
-                              </SelectItem>
-                            ))}
+                            {roleCategories
+                              .filter(category => category.name !== "Administration") // Exclude admin category for regular users
+                              .map((category) => (
+                                <SelectItem key={category.category_id} value={category.category_id.toString()}>
+                                  <div className="flex items-center space-x-2">
+                                    <span>{category.name}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
                           </SelectContent>
                         </Select>
                         <FormMessage />
                       </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Specific Role (only show for categories that need role selection) */}
+                {watchedRoleCategory && (() => {
+                  const selectedCategory = roleCategories.find(c => c.category_id.toString() === watchedRoleCategory)
+                  
+                  // Don't show role selection for Teaching Staff and Department Head (auto-selected)
+                  if (selectedCategory?.name === "Teaching Staff" || selectedCategory?.name === "Department Head") {
+                    return null
+                  }
+                  
+                  // Show role selection for other categories
+                  return (
+                    <div className="md:col-span-2">
+                      <FormField
+                        control={form.control}
+                        name="roleId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Specific Role *</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select specific role" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {roles.map((role) => (
+                                  <SelectItem key={role.role_id} value={role.role_id.toString()}>
+                                    <div className="flex items-center space-x-2">
+                                      <span>{role.name}</span>
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  )
+                })()}
+
+                {/* Department (only when applicable and filtered by role category) */}
+                {(() => {
+                  const selectedCategory = roleCategories.find(c => c.category_id.toString() === watchedRoleCategory)
+                  const requiresDepartment = selectedCategory?.name === "Teaching Staff" || selectedCategory?.name === "Department Head"
+                  
+                  if (requiresDepartment && availableDepartments.length > 0) {
+                    return (
+                      <div className="md:col-span-2">
+                        <FormField
+                          control={form.control}
+                          name="departmentId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Department *</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select department" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {availableDepartments.map((department) => (
+                                    <SelectItem key={department.department_id} value={department.department_id.toString()}>
+                                      {department.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
                     )
-                  }}
-                />
+                  }
+                  return null
+                })()}
+
+                {/* Office Head Question (only for Non Teaching Staff) */}
+                {(() => {
+                  const selectedCategory = roleCategories.find(c => c.category_id.toString() === watchedRoleCategory)
+                  const requiresOfficeHead = selectedCategory?.name === "Non Teaching Staff"
+                  
+                  if (requiresOfficeHead) {
+                    return (
+                      <div className="md:col-span-2">
+                        <FormField
+                          control={form.control}
+                          name="isDepartmentHead"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Is this user an Office Head?</FormLabel>
+                              <FormControl>
+                                <div className="flex gap-6">
+                                  <div className="flex items-center space-x-2">
+                                    <input
+                                      type="radio"
+                                      id="office-head-yes"
+                                      value="yes"
+                                      checked={field.value === "yes"}
+                                      onChange={(e) => field.onChange(e.target.value)}
+                                      className="h-4 w-4"
+                                    />
+                                    <label htmlFor="office-head-yes" className="text-sm font-medium">
+                                      Yes
+                                    </label>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <input
+                                      type="radio"
+                                      id="office-head-no"
+                                      value="no"
+                                      checked={field.value === "no"}
+                                      onChange={(e) => field.onChange(e.target.value)}
+                                      className="h-4 w-4"
+                                    />
+                                    <label htmlFor="office-head-no" className="text-sm font-medium">
+                                      No
+                                    </label>
+                                  </div>
+                                </div>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    )
+                  }
+                  return null
+                })()}
 
                 {/* Status */}
                 <FormField

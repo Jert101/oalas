@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (user.status?.name !== "Probation") {
+    if (user.status?.name !== "Under Probation") {
       return NextResponse.json(
         { error: "User must have probationary status" },
         { status: 400 }
@@ -135,6 +135,133 @@ export async function POST(request: NextRequest) {
     console.error("Error creating probation:", error)
     return NextResponse.json(
       { error: "Failed to create probation" },
+      { status: 500 }
+    )
+  }
+}
+
+// PUT /api/admin/probations - Update probation record
+export async function PUT(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session || session.user.role !== "Admin") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const body = await request.json()
+    const { probation_id, startDate, endDate, probationDays, status } = body
+
+    // Validate required fields
+    if (!probation_id || !startDate || !endDate || !probationDays) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      )
+    }
+
+    // Validate dates
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+    
+    if (start >= end) {
+      return NextResponse.json(
+        { error: "Start date must be before end date" },
+        { status: 400 }
+      )
+    }
+
+    // Check if probation record exists
+    const existingProbation = await prisma.probation.findUnique({
+      where: { probation_id: parseInt(probation_id) }
+    })
+
+    if (!existingProbation) {
+      return NextResponse.json(
+        { error: "Probation record not found" },
+        { status: 404 }
+      )
+    }
+
+    // Update the probation record
+    const updatedProbation = await prisma.probation.update({
+      where: { probation_id: parseInt(probation_id) },
+      data: {
+        startDate: start,
+        endDate: end,
+        probationDays: parseInt(probationDays),
+        status: status || "ACTIVE"
+      },
+      include: {
+        user: {
+          select: {
+            users_id: true,
+            name: true,
+            email: true,
+            department: {
+              select: {
+                name: true
+              }
+            }
+          }
+        }
+      }
+    })
+
+    return NextResponse.json(updatedProbation, { status: 200 })
+  } catch (error) {
+    console.error("Error updating probation:", error)
+    return NextResponse.json(
+      { error: "Failed to update probation" },
+      { status: 500 }
+    )
+  }
+}
+
+// DELETE /api/admin/probations - Delete probation record
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session || session.user.role !== "Admin") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const probation_id = searchParams.get('probation_id')
+
+    if (!probation_id) {
+      return NextResponse.json(
+        { error: "Probation ID is required" },
+        { status: 400 }
+      )
+    }
+
+    // Check if probation record exists
+    const existingProbation = await prisma.probation.findUnique({
+      where: { probation_id: parseInt(probation_id) }
+    })
+
+    if (!existingProbation) {
+      return NextResponse.json(
+        { error: "Probation record not found" },
+        { status: 404 }
+      )
+    }
+
+    // Delete the probation record
+    await prisma.probation.delete({
+      where: { probation_id: parseInt(probation_id) }
+    })
+
+    return NextResponse.json(
+      { message: "Probation record deleted successfully" },
+      { status: 200 }
+    )
+  } catch (error) {
+    console.error("Error deleting probation:", error)
+    return NextResponse.json(
+      { error: "Failed to delete probation" },
       { status: 500 }
     )
   }

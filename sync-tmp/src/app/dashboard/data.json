@@ -1,0 +1,237 @@
+{
+  "admin": [
+    {
+      "id": 1,
+      "header": "User Management",
+      "type": "Admin",
+      "status": "Active",
+      "target": "Admin Panel",
+      "limit": "Full Access",
+      "reviewer": "System"
+    },
+    {
+      "id": 2,
+      "header": "System Settings",
+      "type": "Admin",
+      "status": "Active",
+      "target": "Configuration",
+      "limit": "Full Access",
+      "reviewer": "System"
+    },
+    {
+      "id": 3,
+      "header": "Department Management",
+      "type": "Admin",
+      "status": "Active",
+      "target": "Department Panel",
+      "limit": "Full Access",
+      "reviewer": "System"
+    },
+    {
+      "id": 4,
+      "header": "Pending Account Requests",
+      "type": "Admin",
+      "status": "Pending",
+      "target": "Review Required",
+      "limit": "5 requests",
+      "reviewer": "Admin"
+    },
+    {
+      "id": 5,
+      "header": "System Health Monitor",
+      "type": "Admin",
+      "status": "Active",
+      "target": "Real-time",
+      "limit": "24/7",
+      "reviewer": "System"
+    }
+  ],
+  "teacher": [
+    {
+      "id": 1,
+      "header": "My Leave Applications",
+      "type": "Teacher",
+      "status": "Pending",
+      "target": "Dean Review",
+      "limit": "7 days",
+      "reviewer": "Dean"
+    },
+    {
+      "id": 2,
+      "header": "Approved Leave",
+      "type": "Teacher",
+      "status": "Approved",
+      "target": "Completed",
+      "limit": "5 days",
+      "reviewer": "Dean"
+    },
+    {
+      "id": 3,
+      "header": "Leave Balance",
+      "type": "Teacher",
+      "status": "Active",
+      "target": "15 days remaining",
+      "limit": "Yearly",
+      "reviewer": "HR"
+    },
+    {
+      "id": 4,
+      "header": "Profile Update",
+      "type": "Teacher",
+      "status": "Complete",
+      "target": "Updated",
+      "limit": "No limit",
+      "reviewer": "Self"
+    },
+    {
+      "id": 5,
+      "header": "Department Information",
+      "type": "Teacher",
+      "status": "Active",
+      "target": "Computer Science",
+      "limit": "Current",
+      "reviewer": "Admin"
+    }
+  ],
+  "dean": [
+    {
+      "id": 1,
+      "header": "Pending Approvals",
+      "type": "Dean",
+      "status": "Pending",
+      "target": "5 requests",
+      "limit": "Urgent",
+      "reviewer": "Dean"
+    },
+    {
+      "id": 2,
+      "header": "Department Reports",
+      "type": "Dean",
+      "status": "Active",
+      "target": "Monthly",
+      "limit": "30 days",
+      "reviewer": "Dean"
+    },
+    {
+      "id": 3,
+      "header": "Faculty Management",
+      "type": "Dean",
+      "status": "Active",
+      "target": "25 faculty",
+      "limit": "Current",
+      "reviewer": "Dean"
+    },
+    {
+      "id": 4,
+      "header": "Leave Statistics",
+      "type": "Dean",
+      "status": "Active",
+      "target": "Real-time",
+      "limit": "Updated",
+      "reviewer": "System"
+    },
+    {
+      "id": 5,
+      "header": "Academic Calendar",
+      "type": "Dean",
+      "status": "Active",
+      "target": "2024-2025",
+      "limit": "Yearly",
+      "reviewer": "Admin"
+    }
+  ],
+  "finance": [
+    {
+      "id": 1,
+      "header": "Budget Reports",
+      "type": "Finance",
+      "status": "Active",
+      "target": "Monthly",
+      "limit": "30 days",
+      "reviewer": "Finance Officer"
+    },
+    {
+      "id": 2,
+      "header": "Leave Payroll",
+      "type": "Finance",
+      "status": "Pending",
+      "target": "Weekly",
+      "limit": "7 days",
+      "reviewer": "Finance Officer"
+    },
+    {
+      "id": 3,
+      "header": "Department Budgets",
+      "type": "Finance",
+      "status": "Active",
+      "target": "Quarterly",
+      "limit": "90 days",
+      "reviewer": "Finance Officer"
+    },
+    {
+      "id": 4,
+      "header": "Expense Tracking",
+      "type": "Finance",
+      "status": "Active",
+      "target": "Real-time",
+      "limit": "Daily",
+      "reviewer": "Finance Officer"
+    },
+    {
+      "id": 5,
+      "header": "Financial Analytics",
+      "type": "Finance",
+      "status": "Active",
+      "target": "Dashboard",
+      "limit": "Updated",
+      "reviewer": "System"
+    }
+  ],
+  "non-teaching": [
+    {
+      "id": 1,
+      "header": "My Leave Requests",
+      "type": "Staff",
+      "status": "Pending",
+      "target": "Admin Review",
+      "limit": "10 days",
+      "reviewer": "Admin"
+    },
+    {
+      "id": 2,
+      "header": "Work Schedule",
+      "type": "Staff",
+      "status": "Active",
+      "target": "8 AM - 5 PM",
+      "limit": "Daily",
+      "reviewer": "HR"
+    },
+    {
+      "id": 3,
+      "header": "Department Tasks",
+      "type": "Staff",
+      "status": "Active",
+      "target": "Administration",
+      "limit": "Ongoing",
+      "reviewer": "Supervisor"
+    },
+    {
+      "id": 4,
+      "header": "Attendance Record",
+      "type": "Staff",
+      "status": "Active",
+      "target": "Monthly",
+      "limit": "30 days",
+      "reviewer": "HR"
+    },
+    {
+      "id": 5,
+      "header": "Training Programs",
+      "type": "Staff",
+      "status": "Available",
+      "target": "Professional Development",
+      "limit": "Yearly",
+      "reviewer": "HR"
+    }
+  ]
+}

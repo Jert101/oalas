@@ -6,7 +6,15 @@ import { prisma } from "@/lib/prisma"
 export async function GET() {
   const session = await getServerSession(authOptions)
   if (!session || session.user.role !== "Admin") return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  const items = await prisma.department.findMany({ orderBy: { name: "asc" } })
+  const items = await prisma.department.findMany({ 
+    orderBy: { name: "asc" },
+    select: {
+      department_id: true,
+      name: true,
+      description: true,
+      category: true
+    }
+  })
   return NextResponse.json(items)
 }
 

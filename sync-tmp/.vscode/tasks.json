@@ -1,0 +1,12 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Copy Legendary AI Prompt",
+			"type": "shell",
+			"command": "Get-Content ./docs/legendary_system_prompt.md | Set-Clipboard",
+			"problemMatcher": [],
+			"group": "Custom Tasks"
+		}
+	]
+}

@@ -5,16 +5,17 @@ import { prisma } from "@/lib/prisma"
 import { z } from "zod"
 
 const updateUserSchema = z.object({
-  name: z.string().min(1, "Name is required"),
   firstName: z.string().optional(),
   middleName: z.string().optional(),
   lastName: z.string().optional(),
   suffix: z.string().optional(),
   email: z.string().email("Invalid email address"),
+  roleCategory: z.string().min(1, "Role category is required"),
   roleId: z.string().min(1, "Role is required"),
-  departmentId: z.string().min(1, "Department is required"),
+  departmentId: z.string().optional(),
   statusId: z.string().min(1, "Status is required"),
-  isActive: z.boolean()
+  isActive: z.boolean(),
+  isDepartmentHead: z.string().optional()
 })
 
 export async function DELETE(
@@ -300,35 +301,46 @@ export async function PUT(
       }
     }
 
-    // Verify that role, department, and status exist
+    // Verify that role and status exist
     const roleId = parseInt(validatedData.roleId)
-    const departmentId = parseInt(validatedData.departmentId)
     const statusId = parseInt(validatedData.statusId)
 
-    const [role, department, status] = await Promise.all([
+    const [role, status] = await Promise.all([
       prisma.role.findUnique({ where: { role_id: roleId } }),
-      prisma.department.findUnique({ where: { department_id: departmentId } }),
       prisma.status.findUnique({ where: { status_id: statusId } })
     ])
 
-    if (!role || !department || !status) {
-      return NextResponse.json({ error: 'Invalid role, department, or status' }, { status: 400 })
+    if (!role || !status) {
+      return NextResponse.json({ error: 'Invalid role or status' }, { status: 400 })
     }
+
+    // Verify department if provided
+    let department = null
+    if (validatedData.departmentId) {
+      const departmentId = parseInt(validatedData.departmentId)
+      department = await prisma.department.findUnique({ where: { department_id: departmentId } })
+      if (!department) {
+        return NextResponse.json({ error: 'Invalid department' }, { status: 400 })
+      }
+    }
+
+    // Handle isDepartmentHead conversion
+    const isDepartmentHead = validatedData.isDepartmentHead === "yes"
 
     // Update the user
     const updatedUser = await prisma.user.update({
       where: { users_id: userId },
       data: {
-        name: validatedData.name,
         firstName: validatedData.firstName || null,
         middleName: validatedData.middleName || null,
         lastName: validatedData.lastName || null,
         suffix: validatedData.suffix || null,
         email: validatedData.email,
         role_id: roleId,
-        department_id: departmentId,
+        department_id: validatedData.departmentId ? parseInt(validatedData.departmentId) : null,
         status_id: statusId,
         isActive: validatedData.isActive,
+        isDepartmentHead: isDepartmentHead,
         updatedAt: new Date()
       },
       include: {

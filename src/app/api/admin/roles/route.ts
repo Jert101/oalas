@@ -3,16 +3,34 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
-export async function GET() {
-  const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== "Admin") return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  const items = await prisma.role.findMany({ 
-    orderBy: { name: "asc" },
-    include: {
-      category: true
+export async function GET(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session || session.user.role !== "Admin") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
-  })
-  return NextResponse.json(items)
+
+    const { searchParams } = new URL(req.url)
+    const categoryId = searchParams.get('category_id')
+
+    let whereClause = {}
+    if (categoryId) {
+      whereClause = { category_id: parseInt(categoryId) }
+    }
+
+    const items = await prisma.role.findMany({ 
+      where: whereClause,
+      orderBy: { name: "asc" },
+      include: {
+        category: true
+      }
+    })
+
+    return NextResponse.json({ roles: items })
+  } catch (error) {
+    console.error("Error fetching roles:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
 }
 
 export async function POST(req: NextRequest) {

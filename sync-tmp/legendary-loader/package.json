@@ -1,0 +1,26 @@
+{
+  "name": "legendary-loader",
+  "displayName": "Legendary Prompt Loader",
+  "description": "Auto-loads and pastes the Legendary AI System Prompt into Claude 3.5 Sonnet in VS Code.",
+  "version": "1.1.0",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "type": "module",
+  "main": "extension.js",
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:workbench.action.chat.open",
+    "onCommand:workbench.action.chat.clear"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "legendaryLoader.loadAndPastePrompt",
+        "title": "Load & Paste Legendary Prompt into Claude"
+      }
+    ]
+  },
+  "scripts": {},
+  "categories": ["Other"]
+}

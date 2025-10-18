@@ -32,12 +32,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Clock, Plus, Calendar, UserCheck } from "lucide-react"
+import { Clock, Plus, Calendar, UserCheck, Edit, Trash2, AlertTriangle } from "lucide-react"
 import { toast } from "sonner"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { format, differenceInDays, isAfter } from "date-fns"
+import { format, differenceInDays, isAfter, differenceInHours, differenceInMinutes } from "date-fns"
 
 interface ProbationaryUser {
   users_id: string
@@ -84,7 +84,22 @@ const probationSchema = z.object({
   path: ["endDate"]
 })
 
+const editProbationSchema = z.object({
+  probation_id: z.string().min(1, "Probation ID is required"),
+  startDate: z.string().min(1, "Start date is required"),
+  endDate: z.string().min(1, "End date is required"),
+  status: z.enum(["ACTIVE", "COMPLETED"])
+}).refine((data) => {
+  const start = new Date(data.startDate)
+  const end = new Date(data.endDate)
+  return end > start
+}, {
+  message: "End date must be after start date",
+  path: ["endDate"]
+})
+
 type ProbationFormData = z.infer<typeof probationSchema>
+type EditProbationFormData = z.infer<typeof editProbationSchema>
 
 export default function ManageProbationPage() {
   const { data: session, status: authStatus } = useSession()
@@ -92,8 +107,11 @@ export default function ManageProbationPage() {
   const [probations, setProbations] = useState<Probation[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [probationDays, setProbationDays] = useState<number>(0)
+  const [editProbationDays, setEditProbationDays] = useState<number>(0)
+  const [selectedProbation, setSelectedProbation] = useState<Probation | null>(null)
 
   const {
     register,
@@ -109,8 +127,24 @@ export default function ManageProbationPage() {
     }
   })
 
+  const {
+    register: registerEdit,
+    handleSubmit: handleEditSubmit,
+    reset: resetEdit,
+    setValue: setEditValue,
+    watch: watchEdit,
+    formState: { errors: editErrors }
+  } = useForm<EditProbationFormData>({
+    resolver: zodResolver(editProbationSchema),
+    defaultValues: {
+      status: "ACTIVE"
+    }
+  })
+
   const watchStartDate = watch("startDate")
   const watchEndDate = watch("endDate")
+  const watchEditStartDate = watchEdit("startDate")
+  const watchEditEndDate = watchEdit("endDate")
 
   // Calculate probation days automatically
   useEffect(() => {
@@ -127,6 +161,45 @@ export default function ManageProbationPage() {
       setProbationDays(0)
     }
   }, [watchStartDate, watchEndDate])
+
+  // Calculate edit probation days automatically
+  useEffect(() => {
+    if (watchEditStartDate && watchEditEndDate) {
+      const start = new Date(watchEditStartDate)
+      const end = new Date(watchEditEndDate)
+      if (end > start) {
+        const days = differenceInDays(end, start)
+        setEditProbationDays(days)
+      } else {
+        setEditProbationDays(0)
+      }
+    } else {
+      setEditProbationDays(0)
+    }
+  }, [watchEditStartDate, watchEditEndDate])
+
+  // Countdown function
+  const getCountdown = (endDate: string, status: string) => {
+    if (status === "COMPLETED") return "Completed"
+    
+    const now = new Date()
+    const end = new Date(endDate)
+    const diff = end.getTime() - now.getTime()
+    
+    if (diff <= 0) return "Overdue"
+    
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+    
+    if (days > 0) {
+      return `${days} day${days !== 1 ? 's' : ''} remaining`
+    } else if (hours > 0) {
+      return `${hours} hour${hours !== 1 ? 's' : ''} remaining`
+    } else {
+      return `${minutes} minute${minutes !== 1 ? 's' : ''} remaining`
+    }
+  }
 
   // Authentication check
   useEffect(() => {
@@ -233,6 +306,92 @@ export default function ManageProbationPage() {
       }
     } catch (error) {
       console.error("Error checking expired probations:", error)
+    }
+  }
+
+  // Edit probation
+  const handleEdit = (probation: Probation) => {
+    setSelectedProbation(probation)
+    const editData = {
+      probation_id: probation.probation_id.toString(),
+      startDate: format(new Date(probation.startDate), "yyyy-MM-dd"),
+      endDate: format(new Date(probation.endDate), "yyyy-MM-dd"),
+      status: probation.status
+    }
+    resetEdit(editData)
+    setIsEditDialogOpen(true)
+  }
+
+  // Update probation
+  const onEditSubmit = async (data: EditProbationFormData) => {
+    setIsSubmitting(true)
+    try {
+      const updateData = {
+        ...data,
+        probationDays: editProbationDays
+      }
+
+      const response = await fetch("/api/admin/probations", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updateData)
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to update probation")
+      }
+
+      const updatedProbation = await response.json()
+      setProbations(prev => 
+        prev.map(p => p.probation_id === updatedProbation.probation_id ? updatedProbation : p)
+      )
+      
+      toast.success("Probation period updated successfully")
+      setIsEditDialogOpen(false)
+      resetEdit()
+      setEditProbationDays(0)
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to update probation"
+      toast.error(errorMessage)
+      console.error("Error updating probation:", error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // Delete probation
+  const handleDelete = async (probation: Probation) => {
+    if (!confirm(`Are you sure you want to delete the probation period for ${probation.user.name}?`)) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/admin/probations?probation_id=${probation.probation_id}`, {
+        method: "DELETE"
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to delete probation")
+      }
+
+      setProbations(prev => prev.filter(p => p.probation_id !== probation.probation_id))
+      
+      // Add user back to probationary users list
+      setProbationaryUsers(prev => [...prev, {
+        users_id: probation.user.users_id,
+        name: probation.user.name,
+        email: probation.user.email,
+        profilePicture: probation.user.profilePicture,
+        department: probation.user.department
+      }])
+      
+      toast.success("Probation period deleted successfully")
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to delete probation"
+      toast.error(errorMessage)
+      console.error("Error deleting probation:", error)
     }
   }
 
@@ -436,9 +595,10 @@ export default function ManageProbationPage() {
                         <TableHead>Department</TableHead>
                         <TableHead>Start Date</TableHead>
                         <TableHead>End Date</TableHead>
-                        <TableHead>Duration</TableHead>
+                        <TableHead>Countdown</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Email Sent</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -478,9 +638,16 @@ export default function ManageProbationPage() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-4 w-4 text-gray-400" />
-                              <span>{probation.probationDays} days</span>
+                            <div className="flex items-center gap-2">
+                              <Clock className="h-4 w-4 text-gray-400" />
+                              <div className="flex flex-col">
+                                <span className="text-sm font-medium">
+                                  {getCountdown(probation.endDate, probation.status)}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  ({probation.probationDays} days total)
+                                </span>
+                              </div>
                             </div>
                           </TableCell>
                           <TableCell>
@@ -492,6 +659,26 @@ export default function ManageProbationPage() {
                             <Badge variant={probation.isEmailSent ? "default" : "outline"}>
                               {probation.isEmailSent ? "Sent" : "Pending"}
                             </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEdit(probation)}
+                                className="h-8 w-8 p-0"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDelete(probation)}
+                                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -560,6 +747,88 @@ export default function ManageProbationPage() {
                 </CardContent>
               </Card>
             )}
+
+            {/* Edit Probation Dialog */}
+            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+              <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                  <DialogTitle>Edit Probation Period</DialogTitle>
+                  <DialogDescription>
+                    Update the probation period for {selectedProbation?.user.name}
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleEditSubmit(onEditSubmit)} className="space-y-4">
+                  <div>
+                    <Label htmlFor="edit-startDate">Start Date *</Label>
+                    <Input
+                      type="date"
+                      {...registerEdit("startDate")}
+                    />
+                    {editErrors.startDate && (
+                      <p className="text-sm text-red-600 mt-1">{editErrors.startDate.message}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="edit-endDate">End Date *</Label>
+                    <Input
+                      type="date"
+                      {...registerEdit("endDate")}
+                    />
+                    {editErrors.endDate && (
+                      <p className="text-sm text-red-600 mt-1">{editErrors.endDate.message}</p>
+                    )}
+                  </div>
+
+                  {editProbationDays > 0 && (
+                    <div className="p-3 bg-blue-50 rounded-md">
+                      <Label className="text-sm font-medium text-blue-800">Updated Probation Duration</Label>
+                      <p className="text-lg font-semibold text-blue-900">{editProbationDays} days</p>
+                    </div>
+                  )}
+
+                  <div>
+                    <Label htmlFor="edit-status">Status *</Label>
+                    <Select 
+                      value={watchEdit("status") || "ACTIVE"} 
+                      onValueChange={(value: "ACTIVE" | "COMPLETED") => setEditValue("status", value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ACTIVE">Active</SelectItem>
+                        <SelectItem value="COMPLETED">Completed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {editErrors.status && (
+                      <p className="text-sm text-red-600 mt-1">{editErrors.status.message}</p>
+                    )}
+                  </div>
+
+                  <div className="flex justify-end space-x-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setIsEditDialogOpen(false)
+                        resetEdit()
+                        setEditProbationDays(0)
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="bg-[#FF8C00] hover:bg-[#FF8C00]/90"
+                    >
+                      {isSubmitting ? "Updating..." : "Update Probation"}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </SidebarInset>

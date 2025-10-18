@@ -419,6 +419,11 @@ export default function AddAccountPage() {
     return selectedCategory?.name === "Teaching Staff" || selectedCategory?.name === "Department Head"
   })()
 
+  const requiresOfficeHead = watchedRoleCategory && (() => {
+    const selectedCategory = roleCategories.find(c => c.category_id.toString() === watchedRoleCategory)
+    return selectedCategory?.name === "Non Teaching Staff"
+  })()
+
   return (
     <SidebarProvider
       style={{
@@ -612,9 +617,9 @@ export default function AddAccountPage() {
                         </div>
                       )}
 
-                      {requiresDepartment && (
+                      {requiresOfficeHead && (
                         <div className="space-y-3">
-                          <Label className="text-sm font-medium">Is this user a Department Head?</Label>
+                          <Label className="text-sm font-medium">Is this user an Office Head?</Label>
                           <RadioGroup
                             defaultValue="no"
                             onValueChange={(value: string) => setValue("isDepartmentHead", value as "yes" | "no")}

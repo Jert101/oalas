@@ -16,7 +16,7 @@ export async function GET() {
     const probationaryUsers = await prisma.user.findMany({
       where: {
         status: {
-          name: "Probation"  // Users with probationary status
+          name: "Under Probation"  // Users with probationary status
         },
         probation: null  // Who don't have probation periods assigned yet
       },

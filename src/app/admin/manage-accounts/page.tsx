@@ -214,8 +214,42 @@ export default function ManageAccountsPage() {
       isDepartmentHead: "no"
     }
   })
-
+  
   const watchedRoleCategory = form.watch("roleCategory")
+  const watchedRoleId = form.watch("roleId")
+
+  // Handle role category changes
+  useEffect(() => {
+    if (watchedRoleCategory) {
+      const selectedCategory = roleCategories.find(c => c.category_id.toString() === watchedRoleCategory)
+      
+      // Filter roles based on selected category
+      const filteredRoles = roles.filter(role => role.category_id?.toString() === watchedRoleCategory)
+      
+      // Auto-select role for certain categories
+      if (selectedCategory?.name === "Teaching Staff") {
+        const teacherRole = filteredRoles.find(r => r.name === "Teacher/Instructor")
+        if (teacherRole) {
+          form.setValue("roleId", teacherRole.role_id.toString())
+        }
+      } else if (selectedCategory?.name === "Department Head") {
+        const deptHeadRole = filteredRoles.find(r => r.name === "Department Head")
+        if (deptHeadRole) {
+          form.setValue("roleId", deptHeadRole.role_id.toString())
+        }
+      } else {
+        // Clear role selection for other categories
+        form.setValue("roleId", "")
+      }
+
+      // Filter departments based on category
+      if (selectedCategory?.name === "Teaching Staff" || selectedCategory?.name === "Department Head") {
+        setAvailableDepartments(departments.filter(d => d.category === "ACADEMIC_DEPARTMENT"))
+      } else {
+        setAvailableDepartments(departments.filter(d => d.category === "NON_TEACHING_PERSONNEL"))
+      }
+    }
+  }, [watchedRoleCategory, roleCategories, roles, departments, form])
 
   // Authentication check
   useEffect(() => {
@@ -506,6 +540,16 @@ export default function ManageAccountsPage() {
       isActive: user.isActive,
       isDepartmentHead: user.isDepartmentHead ? "yes" : "no"
     }
+
+    // Set available departments based on user's role category
+    if (user.role?.category_id) {
+      const selectedCategory = roleCategories.find(c => c.category_id === user.role?.category_id)
+      if (selectedCategory?.name === "Teaching Staff" || selectedCategory?.name === "Department Head") {
+        setAvailableDepartments(departments.filter(d => d.category === "ACADEMIC_DEPARTMENT"))
+      } else {
+        setAvailableDepartments(departments.filter(d => d.category === "NON_TEACHING_PERSONNEL"))
+      }
+    }
     
     console.log('📝 Form data being set:', formData)
     console.log('📋 Available roles:', roles.length)
@@ -521,18 +565,43 @@ export default function ManageAccountsPage() {
     if (!selectedUser) return
 
     try {
-      const response = await fetch(`/api/admin/users/${selectedUser.users_id}`, {
+      // Transform form data for API
+      const transformedData = {
+        firstName: data.firstName || "",
+        middleName: data.middleName || "",
+        lastName: data.lastName || "",
+        suffix: data.suffix || "",
+        email: data.email,
+        roleCategory: data.roleCategory,
+        roleId: data.roleId,
+        departmentId: data.departmentId || null,
+        statusId: data.statusId,
+        isActive: data.isActive,
+        isDepartmentHead: data.isDepartmentHead
+      }
+
+      console.log('🔄 Submitting user update:', {
+        userId: selectedUser.users_id,
+        originalData: data,
+        transformedData
+      })
+
+      const response = await fetch(`/api/admin/users/${selectedUser.users_id}/update`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(data)
+        body: JSON.stringify(transformedData)
       })
 
       if (!response.ok) {
         const error = await response.json()
+        console.error('❌ Update failed:', error)
         throw new Error(error.error || "Failed to update user")
       }
+
+      const result = await response.json()
+      console.log('✅ Update successful:', result)
 
       toast.success("User updated successfully")
       setEditDialogOpen(false)
@@ -1275,13 +1344,15 @@ export default function ManageAccountsPage() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                {roles.map((role) => (
-                                  <SelectItem key={role.role_id} value={role.role_id.toString()}>
-                                    <div className="flex items-center space-x-2">
-                                      <span>{role.name}</span>
-                                    </div>
-                                  </SelectItem>
-                                ))}
+                                {roles
+                                  .filter(role => role.category_id?.toString() === watchedRoleCategory)
+                                  .map((role) => (
+                                    <SelectItem key={role.role_id} value={role.role_id.toString()}>
+                                      <div className="flex items-center space-x-2">
+                                        <span>{role.name}</span>
+                                      </div>
+                                    </SelectItem>
+                                  ))}
                               </SelectContent>
                             </Select>
                             <FormMessage />

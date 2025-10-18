@@ -74,6 +74,7 @@ const probationSchema = z.object({
   users_id: z.string().min(1, "Employee is required"),
   startDate: z.string().min(1, "Start date is required"),
   endDate: z.string().min(1, "End date is required"),
+  probationDays: z.number().min(1, "Probation days must be at least 1").optional(),
   status: z.enum(["ACTIVE", "COMPLETED"])
 }).refine((data) => {
   const start = new Date(data.startDate)
@@ -88,6 +89,7 @@ const editProbationSchema = z.object({
   probation_id: z.string().min(1, "Probation ID is required"),
   startDate: z.string().min(1, "Start date is required"),
   endDate: z.string().min(1, "End date is required"),
+  probationDays: z.number().min(1, "Probation days must be at least 1").optional(),
   status: z.enum(["ACTIVE", "COMPLETED"])
 }).refine((data) => {
   const start = new Date(data.startDate)
@@ -319,6 +321,7 @@ export default function ManageProbationPage() {
       status: probation.status
     }
     resetEdit(editData)
+    setEditProbationDays(probation.probationDays || 0)
     setIsEditDialogOpen(true)
   }
 
@@ -516,10 +519,43 @@ export default function ManageProbationPage() {
                       </div>
 
                       <div>
+                        <Label htmlFor="probationDays">Probation Days</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          placeholder="Enter number of days (optional)"
+                          value={probationDays || ""}
+                          onChange={(e) => {
+                            const days = parseInt(e.target.value) || 0
+                            setProbationDays(days)
+                            if (days > 0 && watchStartDate) {
+                              const startDate = new Date(watchStartDate)
+                              const endDate = new Date(startDate)
+                              endDate.setDate(startDate.getDate() + days)
+                              setValue("endDate", endDate.toISOString().split('T')[0])
+                            }
+                          }}
+                        />
+                        <p className="text-sm text-gray-600 mt-1">
+                          Enter probation days to auto-calculate end date
+                        </p>
+                      </div>
+
+                      <div>
                         <Label htmlFor="endDate">End Date *</Label>
                         <Input
                           type="date"
                           {...register("endDate")}
+                          onChange={(e) => {
+                            // Update probation days when end date is manually changed
+                            if (watchStartDate && e.target.value) {
+                              const start = new Date(watchStartDate)
+                              const end = new Date(e.target.value)
+                              const days = differenceInDays(end, start)
+                              setProbationDays(days > 0 ? days : 0)
+                            }
+                            register("endDate").onChange(e)
+                          }}
                         />
                         {errors.endDate && (
                           <p className="text-sm text-red-600 mt-1">{errors.endDate.message}</p>
@@ -770,10 +806,43 @@ export default function ManageProbationPage() {
                   </div>
 
                   <div>
+                    <Label htmlFor="edit-probationDays">Probation Days</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      placeholder="Enter number of days (optional)"
+                      value={editProbationDays || ""}
+                      onChange={(e) => {
+                        const days = parseInt(e.target.value) || 0
+                        setEditProbationDays(days)
+                        if (days > 0 && watchEditStartDate) {
+                          const startDate = new Date(watchEditStartDate)
+                          const endDate = new Date(startDate)
+                          endDate.setDate(startDate.getDate() + days)
+                          setEditValue("endDate", endDate.toISOString().split('T')[0])
+                        }
+                      }}
+                    />
+                    <p className="text-sm text-gray-600 mt-1">
+                      Enter probation days to auto-calculate end date
+                    </p>
+                  </div>
+
+                  <div>
                     <Label htmlFor="edit-endDate">End Date *</Label>
                     <Input
                       type="date"
                       {...registerEdit("endDate")}
+                      onChange={(e) => {
+                        // Update probation days when end date is manually changed
+                        if (watchEditStartDate && e.target.value) {
+                          const start = new Date(watchEditStartDate)
+                          const end = new Date(e.target.value)
+                          const days = differenceInDays(end, start)
+                          setEditProbationDays(days > 0 ? days : 0)
+                        }
+                        registerEdit("endDate").onChange(e)
+                      }}
                     />
                     {editErrors.endDate && (
                       <p className="text-sm text-red-600 mt-1">{editErrors.endDate.message}</p>

@@ -122,8 +122,9 @@ export default function FinanceApplicationsPage() {
     })
   }
 
-  const handleViewApplication = (applicationId: number) => {
-    router.push(`/finance/applications/${applicationId}`)
+  const handleViewApplication = (application: any) => {
+    // Use the formatted ID (leave_24, travel_5, etc.) from the API response
+    router.push(`/finance/applications/${application.id}`)
   }
 
   const handleApprove = async (applicationId: number) => {
@@ -331,7 +332,7 @@ export default function FinanceApplicationsPage() {
                     <Button 
                       variant="ghost" 
                       size="sm"
-                      onClick={() => handleViewApplication(application.leave_application_id)}
+                      onClick={() => handleViewApplication(application)}
                       className="w-full sm:w-auto"
                     >
                       <Eye className="h-4 w-4" />

@@ -121,8 +121,9 @@ export default function DeanApplicationsPage() {
     })
   }
 
-  const handleViewApplication = (applicationId: number) => {
-    router.push(`/dean/applications/${applicationId}`)
+  const handleViewApplication = (application: any) => {
+    // Use the formatted ID (leave_24, travel_5, etc.) from the API response
+    router.push(`/dean/applications/${application.id}`)
   }
 
   if (isLoading) {
@@ -268,7 +269,7 @@ export default function DeanApplicationsPage() {
                     <Button 
                       variant="ghost" 
                       size="sm"
-                      onClick={() => handleViewApplication(application.leave_application_id)}
+                      onClick={() => handleViewApplication(application)}
                     >
                       <Eye className="h-4 w-4" />
                     </Button>

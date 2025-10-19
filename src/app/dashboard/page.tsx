@@ -31,9 +31,9 @@ export default function DashboardPage() {
     const userRole = (session.user as any)?.role
     const isDepartmentHead = (session.user as any)?.isDepartmentHead
 
-    // EMERGENCY CLIENT-SIDE ROUTING for Maintenance Office
-    if (userRole === 'Maintenance Office') {
-      console.log("[Dashboard] 🚨 CLIENT-SIDE EMERGENCY: Maintenance Office detected, redirecting to dean dashboard")
+    // Check for Maintenance Office - but respect isDepartmentHead status
+    if (userRole === 'Maintenance Office' && !isDepartmentHead) {
+      console.log("[Dashboard] 🚨 CLIENT-SIDE EMERGENCY: Maintenance Office (non-head) detected, redirecting to dean dashboard")
       router.push('/dean/dashboard')
       return
     }

@@ -428,6 +428,7 @@ export default function ManageAccountsPage() {
         }
         
         const data = await response.json()
+        console.log('🔍 DEBUG: User data received:', data.users?.slice(0, 3)) // Log first 3 users for debugging
         setUsers(data.users || [])
         calculateStats(data.users || [])
       } catch (error) {
@@ -1000,7 +1001,16 @@ export default function ManageAccountsPage() {
                       <TableCell>{user.email}</TableCell>
                       <TableCell>
                         <Badge variant={getRoleBadgeVariant(user.role?.name || "")}>
-                          {formatRoleDisplay(user.role?.name, user.department?.name, user.isDepartmentHead)}
+                          {(() => {
+                            const formatted = formatRoleDisplay(user.role?.name, user.department?.name, user.isDepartmentHead)
+                            console.log('🔍 DEBUG: Role display for user', user.name, ':', {
+                              role: user.role?.name,
+                              department: user.department?.name,
+                              isDepartmentHead: user.isDepartmentHead,
+                              formatted
+                            })
+                            return formatted
+                          })()}
                         </Badge>
                       </TableCell>
                       <TableCell>

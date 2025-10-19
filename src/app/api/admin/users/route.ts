@@ -27,6 +27,7 @@ export async function GET() {
         suffix: true,
         profilePicture: true,
         isActive: true,
+        isDepartmentHead: true,
         createdAt: true,
         role_id: true,
         department_id: true,

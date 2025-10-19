@@ -185,6 +185,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       roleBasedItems = adminNavigationItems
     } else if (["Teacher/Instructor", "Non Teaching Personnel"].includes(userRole || "")) {
       roleBasedItems = teacherNavigationItems
+    } else if (["Office Clerk", "Maintenance Office", "Guidance Office", "Registrar Office", "Administrative Assistant", "Library Staff", "IT Support", "Security Office", "Clinic Staff", "Accounting Office", "HR Department", "Registrar"].includes(userRole || "")) {
+      // Non-teaching staff roles use teacher navigation items but with non-teaching-staff URLs
+      roleBasedItems = teacherNavigationItems.map(item => ({
+        ...item,
+        url: item.url.replace('/teacher/', '/non-teaching-staff/'),
+        title: item.title.replace('Teacher Dashboard', 'Non-Teaching Staff Dashboard')
+      }))
     }
     // Note: Dean/Program Head should use DeanSidebar, not AppSidebar
     

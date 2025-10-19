@@ -231,12 +231,16 @@ export async function notifySystemMessage(userId: string, title: string, message
 
 // Finance approval/rejection notifications
 export async function notifyFinanceApproval(userId: string, applicationId: number, leaveType?: string) {
+  // Determine the correct link based on user role
+  // For now, we'll use a generic link that works for all roles
+  const link = `/applications/${applicationId}`
+  
   return createNotification({
     userId,
     title: 'Leave Application Fully Approved',
     message: 'Your leave application has been fully approved by Finance and is ready for printing.',
     type: 'SUCCESS',
-    link: `/teacher/leave/${applicationId}`,
+    link: link,
     sendEmail: true,
     emailTemplate: 'leaveApplicationApproved',
     emailData: {

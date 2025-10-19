@@ -155,85 +155,134 @@ export async function POST(
 
     // Deduct leave balance only when both dean and finance approve
     // This ensures balance is only deducted for fully approved applications
-    
-    // Get current calendar period to check if it's summer (shared balance)
-    const currentPeriod = await prisma.calendarPeriod.findFirst({
-      where: { isCurrent: true },
-      include: {
-        termType: true
-      }
-    })
-
-    if (currentPeriod) {
-      const isSummerPeriod = currentPeriod.termType?.name?.toLowerCase().includes('summer')
+    try {
+      console.log('🔍 Finance Approval - Starting leave balance deduction process')
+      console.log('🔍 Finance Approval - Application details:', {
+        applicationId: updatedApplication.leave_application_id,
+        userId: updatedApplication.users_id,
+        leaveTypeId: updatedApplication.leave_type_id,
+        numberOfDays: updatedApplication.numberOfDays,
+        calendarPeriodId: updatedApplication.calendar_period_id
+      })
       
-      if (isSummerPeriod) {
-        // For summer period, update shared leave balance
-        // Find any leave balance record for this user and period (they should all be the same)
-        const sharedLeaveBalance = await prisma.leaveBalance.findFirst({
-          where: {
-            users_id: updatedApplication.users_id,
-            calendar_period_id: updatedApplication.calendar_period_id
-          }
-        })
+      // Get current calendar period to check if it's summer (shared balance)
+      const currentPeriod = await prisma.calendarPeriod.findFirst({
+        where: { isCurrent: true },
+        include: {
+          termType: true
+        }
+      })
 
-        if (sharedLeaveBalance) {
-          await prisma.leaveBalance.update({
+      console.log('🔍 Finance Approval - Current period:', {
+        periodId: currentPeriod?.calendar_period_id,
+        periodName: currentPeriod?.academicYear,
+        termTypeName: currentPeriod?.termType?.name,
+        isCurrent: currentPeriod?.isCurrent
+      })
+
+      if (currentPeriod) {
+        const isSummerPeriod = currentPeriod.termType?.name?.toLowerCase().includes('summer')
+        console.log('🔍 Finance Approval - Is summer period:', isSummerPeriod)
+        
+        if (isSummerPeriod) {
+          // For summer period, update shared leave balance
+          // Find any leave balance record for this user and period (they should all be the same)
+          console.log('🔍 Finance Approval - Looking for shared leave balance (summer period)')
+          const sharedLeaveBalance = await prisma.leaveBalance.findFirst({
             where: {
-              leave_balance_id: sharedLeaveBalance.leave_balance_id
-            },
-            data: {
-              usedDays: {
-                increment: updatedApplication.numberOfDays
-              },
-              remainingDays: {
-                decrement: updatedApplication.numberOfDays
-              }
+              users_id: updatedApplication.users_id,
+              calendar_period_id: updatedApplication.calendar_period_id
             }
           })
-          
-          console.log(`✅ Shared leave balance updated for summer period - user ${updatedApplication.users_id}: ${updatedApplication.numberOfDays} days deducted`)
+
+          console.log('🔍 Finance Approval - Shared leave balance found:', !!sharedLeaveBalance)
+          if (sharedLeaveBalance) {
+            console.log('🔍 Finance Approval - Shared leave balance details:', {
+              balanceId: sharedLeaveBalance.leave_balance_id,
+              currentUsedDays: sharedLeaveBalance.usedDays,
+              currentRemainingDays: sharedLeaveBalance.remainingDays,
+              daysToDeduct: updatedApplication.numberOfDays
+            })
+            
+            await prisma.leaveBalance.update({
+              where: {
+                leave_balance_id: sharedLeaveBalance.leave_balance_id
+              },
+              data: {
+                usedDays: {
+                  increment: updatedApplication.numberOfDays
+                },
+                remainingDays: {
+                  decrement: updatedApplication.numberOfDays
+                }
+              }
+            })
+            
+            console.log(`✅ Shared leave balance updated for summer period - user ${updatedApplication.users_id}: ${updatedApplication.numberOfDays} days deducted`)
+          } else {
+            console.log(`⚠️ No shared leave balance found for user ${updatedApplication.users_id} in summer period`)
+            console.log('🔍 Finance Approval - Available leave balances for this user:', await prisma.leaveBalance.findMany({
+              where: { users_id: updatedApplication.users_id },
+              select: { leave_balance_id: true, calendar_period_id: true, leave_type_id: true, usedDays: true, remainingDays: true }
+            }))
+          }
         } else {
-          console.log(`⚠️ No shared leave balance found for user ${updatedApplication.users_id} in summer period`)
+          // For non-summer periods, update specific leave type balance
+          console.log('🔍 Finance Approval - Looking for specific leave type balance (non-summer period)')
+          const leaveBalance = await prisma.leaveBalance.findFirst({
+            where: {
+              users_id: updatedApplication.users_id,
+              calendar_period_id: updatedApplication.calendar_period_id,
+              leave_type_id: updatedApplication.leave_type_id
+            }
+          })
+
+          console.log('🔍 Finance Approval - Specific leave balance found:', !!leaveBalance)
+          if (leaveBalance) {
+            console.log('🔍 Finance Approval - Specific leave balance details:', {
+              balanceId: leaveBalance.leave_balance_id,
+              currentUsedDays: leaveBalance.usedDays,
+              currentRemainingDays: leaveBalance.remainingDays,
+              daysToDeduct: updatedApplication.numberOfDays
+            })
+            
+            await prisma.leaveBalance.update({
+              where: {
+                leave_balance_id: leaveBalance.leave_balance_id
+              },
+              data: {
+                usedDays: {
+                  increment: updatedApplication.numberOfDays
+                },
+                remainingDays: {
+                  decrement: updatedApplication.numberOfDays
+                }
+              }
+            })
+            
+            console.log(`✅ Leave balance updated for user ${updatedApplication.users_id}: ${updatedApplication.numberOfDays} days deducted`)
+          } else {
+            console.log(`⚠️ No leave balance found for user ${updatedApplication.users_id}`)
+            console.log('🔍 Finance Approval - Available leave balances for this user:', await prisma.leaveBalance.findMany({
+              where: { users_id: updatedApplication.users_id },
+              select: { leave_balance_id: true, calendar_period_id: true, leave_type_id: true, usedDays: true, remainingDays: true }
+            }))
+          }
         }
       } else {
-        // For non-summer periods, update specific leave type balance
-        const leaveBalance = await prisma.leaveBalance.findFirst({
-          where: {
-            users_id: updatedApplication.users_id,
-            calendar_period_id: updatedApplication.calendar_period_id,
-            leave_type_id: updatedApplication.leave_type_id
-          }
-        })
-
-        if (leaveBalance) {
-          await prisma.leaveBalance.update({
-            where: {
-              leave_balance_id: leaveBalance.leave_balance_id
-            },
-            data: {
-              usedDays: {
-                increment: updatedApplication.numberOfDays
-              },
-              remainingDays: {
-                decrement: updatedApplication.numberOfDays
-              }
-            }
-          })
-          
-          console.log(`✅ Leave balance updated for user ${updatedApplication.users_id}: ${updatedApplication.numberOfDays} days deducted`)
-        } else {
-          console.log(`⚠️ No leave balance found for user ${updatedApplication.users_id}`)
-        }
+        console.log('⚠️ Finance Approval - No current period found, skipping leave balance deduction')
       }
+    } catch (balanceError) {
+      console.error('❌ Finance Approval - Error during leave balance deduction:', balanceError)
+      // Don't fail the entire approval if balance deduction fails
     }
 
     // Send notification and email to applicant
     try {
       await notifyFinanceApproval(
-        application.userId, 
+        application.users_id,  // Fixed: was application.userId
         applicationId,
-        application.leaveType?.name || 'Leave'
+        leaveType?.name || 'Leave'  // Fixed: use leaveType from the query above
       )
       
       console.log(`✅ Finance approval notifications sent to ${application.user.name}`)
@@ -243,7 +292,7 @@ export async function POST(
     }
 
     // Send real-time application update
-    await sendRealtimeApplicationUpdate(application.userId, applicationWithLeaveType, 'update')
+    await sendRealtimeApplicationUpdate(application.users_id, applicationWithLeaveType, 'update')  // Fixed: was application.userId
 
     return NextResponse.json({
       success: true,

@@ -61,10 +61,18 @@ export default function DateValidation({
         params.append('leaveTypeId', leaveTypeId.toString())
       }
       
+      console.log('🔍 DateValidation API call:', {
+        startDate,
+        endDate,
+        leaveTypeId,
+        url: `/api/teacher/validation?${params.toString()}`
+      })
+      
       const response = await fetch(`/api/teacher/validation?${params.toString()}`)
       
       if (response.ok) {
         const data = await response.json()
+        console.log('📋 DateValidation API response:', data)
         setValidation(data)
       } else {
         console.error('Error checking date validation:', response.status)

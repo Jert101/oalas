@@ -60,13 +60,19 @@ export default function DeanLeavePage() {
   const fetchApplications = async () => {
     try {
       setIsLoading(true)
+      console.log('🔍 Fetching dean leave applications...')
       const response = await fetch('/api/dean/leave-applications')
+      
+      console.log('Response status:', response.status)
       
       if (response.ok) {
         const data = await response.json()
+        console.log('Applications data received:', data)
         setApplications(data.applications || [])
+        console.log(`Set ${data.applications?.length || 0} applications`)
       } else {
-        console.error('Error fetching applications:', response.status)
+        const errorData = await response.json()
+        console.error('Error fetching applications:', response.status, errorData)
       }
     } catch (error) {
       console.error('Error fetching applications:', error)

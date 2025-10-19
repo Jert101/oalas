@@ -31,12 +31,7 @@ export default function DashboardPage() {
     const userRole = (session.user as any)?.role
     const isDepartmentHead = (session.user as any)?.isDepartmentHead
 
-    // Check for Maintenance Office - but respect isDepartmentHead status
-    if (userRole === 'Maintenance Office' && !isDepartmentHead) {
-      console.log("[Dashboard] 🚨 CLIENT-SIDE EMERGENCY: Maintenance Office (non-head) detected, redirecting to dean dashboard")
-      router.push('/dean/dashboard')
-      return
-    }
+    // Remove emergency routing - let normal role-based routing handle it
 
     // Role-based routing (PRIORITY: specific roles first, before general isDepartmentHead check)
     if (userRole === 'Admin') {
@@ -65,8 +60,22 @@ export default function DashboardPage() {
       return
     }
 
-    // Non-teaching staff routing (Office Clerk + all Non Teaching Staff category roles)
-    const nonTeachingRoles = ['Office Clerk'] // Will be expanded based on admin/roles Non Teaching Staff category
+    // Non-teaching staff routing (all Non Teaching Staff category roles)
+    const nonTeachingRoles = [
+      'Office Clerk', 
+      'Non Teaching Personnel', 
+      'Maintenance Office', 
+      'Guidance Office', 
+      'Registrar Office', 
+      'Administrative Assistant', 
+      'Library Staff', 
+      'IT Support',
+      'Security Office', 
+      'Clinic Staff', 
+      'Accounting Office',
+      'HR Department',
+      'Registrar'
+    ]
     if (nonTeachingRoles.includes(userRole || '')) {
       console.log("[Dashboard] 🏢 Non-teaching staff detected, redirecting to non-teaching dashboard")
       router.push('/non-teaching-staff/dashboard')

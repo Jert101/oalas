@@ -19,10 +19,7 @@ export default withAuth(
       return NextResponse.redirect(new URL('/', req.url))
     }
     
-    // EMERGENCY ROUTING: Handle Maintenance Office immediately  
-    if (token?.role === 'Maintenance Office' && pathname === '/dashboard') {
-      return NextResponse.redirect(new URL('/dean/dashboard', req.url))
-    }
+    // Remove emergency routing - let normal role-based routing handle it
     
     console.log("[Middleware] Token data:", {
       email: token.email,
@@ -79,8 +76,22 @@ export default withAuth(
         return NextResponse.redirect(new URL('/office-head/dashboard', req.url))
       }
       
-      // Non-teaching staff routing (Office Clerk + all Non Teaching Staff category roles)
-      const nonTeachingRoles = ['Office Clerk'] // Will be expanded based on admin/roles Non Teaching Staff category
+      // Non-teaching staff routing (all Non Teaching Staff category roles)
+      const nonTeachingRoles = [
+        'Office Clerk', 
+        'Non Teaching Personnel', 
+        'Maintenance Office', 
+        'Guidance Office', 
+        'Registrar Office', 
+        'Administrative Assistant', 
+        'Library Staff', 
+        'IT Support',
+        'Security Office', 
+        'Clinic Staff', 
+        'Accounting Office',
+        'HR Department',
+        'Registrar'
+      ]
       if (nonTeachingRoles.includes(token?.role || '')) {
         console.log("[Middleware] 🏢 Non-teaching staff detected - redirecting to non-teaching dashboard:", {
           role: token?.role,
@@ -124,13 +135,7 @@ export default withAuth(
       const isAdmin = token?.role === 'Admin'
       const isOfficeHead = (token as any)?.isDepartmentHead // Any role marked as office head
       
-      // FALLBACK: Allow specific Non Teaching Staff roles
-      const nonTeachingOfficeRoles = [
-        'Guidance Office', 'Registrar Office', 'Maintenance Office', 
-        'Administrative Assistant', 'Library Staff', 'IT Support',
-        'Security Office', 'Clinic Staff', 'Accounting Office'
-      ]
-      const isFallbackOfficeRole = nonTeachingOfficeRoles.includes(token?.role || '')
+      // Remove fallback access for non-teaching staff to dean routes
       
       console.log("[Middleware] Dean route access check:", {
         pathname,
@@ -138,11 +143,10 @@ export default withAuth(
         isDean,
         isAdmin,
         isOfficeHead: isOfficeHead,
-        isFallbackOfficeRole,
         isDepartmentHead: (token as any)?.isDepartmentHead
       })
       
-      if (!isDean && !isAdmin && !isOfficeHead && !isFallbackOfficeRole) {
+      if (!isDean && !isAdmin && !isOfficeHead) {
         console.log("[Middleware] Access denied to dean route for:", token?.role)
         return NextResponse.redirect(new URL('/unauthorized', req.url))
       }
@@ -162,9 +166,23 @@ export default withAuth(
       }
     }
 
-    // Non-teaching staff routes (Office Clerk + all Non Teaching Staff category roles)
+    // Non-teaching staff routes (all Non Teaching Staff category roles)
     if (pathname.startsWith('/non-teaching-staff')) {
-      const nonTeachingRoles = ['Office Clerk'] // Will be expanded based on admin/roles Non Teaching Staff category
+      const nonTeachingRoles = [
+        'Office Clerk', 
+        'Non Teaching Personnel', 
+        'Maintenance Office', 
+        'Guidance Office', 
+        'Registrar Office', 
+        'Administrative Assistant', 
+        'Library Staff', 
+        'IT Support',
+        'Security Office', 
+        'Clinic Staff', 
+        'Accounting Office',
+        'HR Department',
+        'Registrar'
+      ]
       if (!nonTeachingRoles.includes(token?.role || '') && token?.role !== 'Admin') {
         // Redirect to their appropriate dashboard
         if (token?.role === 'Finance Department') {

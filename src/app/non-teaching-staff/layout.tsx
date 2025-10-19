@@ -19,12 +19,28 @@ export default function NonTeachingStaffLayout({
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
 
+  // Define non-teaching staff roles
+  const nonTeachingRoles = [
+    'Office Clerk', 
+    'Non Teaching Personnel', 
+    'Maintenance Office', 
+    'Guidance Office', 
+    'Registrar Office', 
+    'Administrative Assistant', 
+    'Library Staff', 
+    'IT Support',
+    'Security Office', 
+    'Clinic Staff', 
+    'Accounting Office',
+    'HR Department',
+    'Registrar'
+  ]
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login")
     } else if (status === "authenticated") {
-      // Check if user has non-teaching staff role (Office Clerk + all Non Teaching Staff category roles)
-      const nonTeachingRoles = ["Office Clerk"] // Will be expanded based on admin/roles Non Teaching Staff category
+      // Check if user has non-teaching staff role (all Non Teaching Staff category roles)
       if (!nonTeachingRoles.includes(session?.user?.role || "")) {
         router.push("/dashboard")
       } else {
@@ -44,7 +60,7 @@ export default function NonTeachingStaffLayout({
     )
   }
 
-  if (!session || !["Office Clerk"].includes(session.user.role || "")) {
+  if (!session || !nonTeachingRoles.includes(session.user.role || "")) {
     return null
   }
 

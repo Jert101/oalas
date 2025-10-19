@@ -230,17 +230,10 @@ export async function POST(
 
     // Send notification and email to applicant
     try {
-      // Send in-app notification
-      await notifyFinanceApproval(application.userId, applicationId)
-      
-      // Send email notification
-      await emailService.sendFinanceApprovalEmail(
-        application.user.email,
-        application.user.name,
+      await notifyFinanceApproval(
+        application.userId, 
         applicationId,
-        leaveType?.name || 'Leave',
-        application.startDate,
-        application.endDate
+        application.leaveType?.name || 'Leave'
       )
       
       console.log(`✅ Finance approval notifications sent to ${application.user.name}`)

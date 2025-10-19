@@ -81,8 +81,17 @@ export async function POST(request: NextRequest) {
     // Note: Leave balance will be deducted only when both dean and finance approve
     // This prevents deduction for rejected applications
 
+    // Get leave type information for notifications
+    const leaveType = await prisma.leave_types.findUnique({
+      where: { leave_type_id: leaveTypeId }
+    })
+
     // Send notification to the applicant
-    await notifyLeaveApplicationSubmitted(user.users_id, leaveApplication.leave_application_id)
+    await notifyLeaveApplicationSubmitted(
+      user.users_id, 
+      leaveApplication.leave_application_id,
+      leaveType?.name || 'Leave'
+    )
 
     // Send notification to the dean of the department
     if (user.department_id) {
@@ -99,7 +108,8 @@ export async function POST(request: NextRequest) {
         await notifyNewApplicationForDean(
           dean.users_id, 
           user.name, 
-          leaveApplication.leave_application_id
+          leaveApplication.leave_application_id,
+          leaveType?.name || 'Leave'
         )
       }
     }

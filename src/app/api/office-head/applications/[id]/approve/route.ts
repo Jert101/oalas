@@ -191,15 +191,12 @@ export async function POST(
       }
     })
 
-    // Send notification to applicant
-    await notifyLeaveApplicationApproved(application.user.users_id, applicationId)
-
-    // Send email notification to applicant
-    await realEmailService.sendLeaveApplicationApprovedEmail(
-      application.user.email,
-      application.user.name,
-      applicationId,
-      user.name
+    // Send notification to applicant (includes email)
+    await notifyLeaveApplicationApproved(
+      application.user.users_id, 
+      applicationId, 
+      user.name,
+      application.leaveType?.name || 'Leave'
     )
 
     // Send real-time application update

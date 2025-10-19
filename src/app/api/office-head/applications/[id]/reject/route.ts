@@ -201,16 +201,13 @@ export async function POST(
       }
     })
 
-    // Send notification to applicant
-    await notifyLeaveApplicationRejected(application.user.users_id, applicationId, rejectionReason)
-
-    // Send email notification to applicant
-    await realEmailService.sendLeaveApplicationRejectedEmail(
-      application.user.email,
-      application.user.name,
-      applicationId,
+    // Send notification to applicant (includes email)
+    await notifyLeaveApplicationRejected(
+      application.user.users_id, 
+      applicationId, 
+      rejectionReason,
       user.name,
-      rejectionReason
+      application.leaveType?.name || 'Leave'
     )
 
     // Send real-time application update

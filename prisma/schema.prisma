@@ -184,7 +184,7 @@ model LeaveApplication {
   medicalProof         String?           @db.Text // File path for medical proof
   calendarPeriod       CalendarPeriod?   @relation(fields: [calendar_period_id], references: [calendar_period_id])
   reviewer             User?             @relation("ReviewedApplications", fields: [reviewedBy], references: [users_id])
-  user                 User              @relation(fields: [users_id], references: [users_id], onDelete: Cascade)
+  user                 User              @relation(fields: [users_id], references: [users_id])
   leaveType            leave_types       @relation(fields: [leave_type_id], references: [leave_type_id])
   // Dean approval fields
   deanReviewedAt       DateTime?
@@ -225,7 +225,7 @@ model TravelOrder {
   updatedAt            DateTime          @updatedAt
   calendarPeriod       CalendarPeriod?   @relation(fields: [calendar_period_id], references: [calendar_period_id])
   reviewer             User?             @relation("ReviewedTravelOrders", fields: [reviewedBy], references: [users_id])
-  user                 User              @relation(fields: [users_id], references: [users_id], onDelete: Cascade)
+  user                 User              @relation(fields: [users_id], references: [users_id])
 
   @@index([calendar_period_id], map: "travel_orders_calendar_period_id_fkey")
   @@index([reviewedBy], map: "travel_orders_reviewedBy_fkey")
@@ -289,7 +289,7 @@ model Probation {
   isEmailSent    Boolean         @default(false)
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
-  user           User            @relation(fields: [users_id], references: [users_id], onDelete: Cascade)
+  user           User            @relation(fields: [users_id], references: [users_id])
 
   @@map("probations")
 }

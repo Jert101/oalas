@@ -112,9 +112,25 @@ export async function checkPendingApplications(userId: string): Promise<Validati
 export async function checkDateConflicts(
   userId: string, 
   startDate: Date, 
-  endDate: Date
+  endDate: Date,
+  leaveTypeId?: number
 ): Promise<ValidationResult> {
   try {
+    // Check if the leave type is exempt from date restrictions
+    if (leaveTypeId) {
+      const leaveType = await prisma.leave_types.findUnique({
+        where: { leave_type_id: leaveTypeId },
+        select: { exempt_from_date_restriction: true }
+      })
+      
+      if (leaveType?.exempt_from_date_restriction) {
+        return {
+          isValid: true,
+          message: "Leave type is exempt from date restrictions"
+        }
+      }
+    }
+
     // Check for overlapping approved leave applications
     const conflictingLeaveApplications = await prisma.leaveApplication.findMany({
       where: {
@@ -228,7 +244,8 @@ export async function checkDateConflicts(
 export async function validateNewApplication(
   userId: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  leaveTypeId?: number
 ): Promise<ValidationResult> {
   try {
     // First check for pending applications
@@ -237,8 +254,8 @@ export async function validateNewApplication(
       return pendingCheck
     }
 
-    // Then check for date conflicts
-    const dateCheck = await checkDateConflicts(userId, startDate, endDate)
+    // Then check for date conflicts (with exemption check)
+    const dateCheck = await checkDateConflicts(userId, startDate, endDate, leaveTypeId)
     if (!dateCheck.canApply) {
       return dateCheck
     }

@@ -15,7 +15,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       return NextResponse.json({ error: "Invalid leave type ID" }, { status: 400 })
     }
 
-    const { name, description } = await req.json()
+    const { name, description, exempt_from_date_restriction } = await req.json()
     if (!name?.trim()) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 })
     }
@@ -45,7 +45,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       where: { leave_type_id: id },
       data: { 
         name: name.trim(), 
-        description: description?.trim() || null 
+        description: description?.trim() || null,
+        exempt_from_date_restriction: exempt_from_date_restriction || false
       }
     })
 

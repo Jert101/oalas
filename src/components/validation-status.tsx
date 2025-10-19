@@ -21,6 +21,9 @@ interface ValidationStatusProps {
   onValidationChange?: (canApply: boolean) => void
   validationApi?: string
   applyPath?: string
+  leaveTypeId?: number
+  startDate?: string
+  endDate?: string
 }
 
 interface ValidationResult {
@@ -33,7 +36,10 @@ interface ValidationResult {
 export default function ValidationStatus({ 
   onValidationChange, 
   validationApi = '/api/teacher/validation',
-  applyPath = '/teacher/leave/apply'
+  applyPath = '/teacher/leave/apply',
+  leaveTypeId,
+  startDate,
+  endDate
 }: ValidationStatusProps) {
   const [validation, setValidation] = useState<ValidationResult | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -41,7 +47,7 @@ export default function ValidationStatus({
 
   useEffect(() => {
     checkValidation()
-  }, [])
+  }, [leaveTypeId, startDate, endDate])
 
   useEffect(() => {
     if (validation) {
@@ -52,7 +58,15 @@ export default function ValidationStatus({
   const checkValidation = async () => {
     try {
       setIsLoading(true)
-      const response = await fetch(validationApi)
+      
+      // Build query parameters
+      const params = new URLSearchParams()
+      if (startDate) params.append('startDate', startDate)
+      if (endDate) params.append('endDate', endDate)
+      if (leaveTypeId) params.append('leaveTypeId', leaveTypeId.toString())
+      
+      const url = params.toString() ? `${validationApi}?${params.toString()}` : validationApi
+      const response = await fetch(url)
       
       if (response.ok) {
         const data = await response.json()

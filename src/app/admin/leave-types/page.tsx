@@ -15,21 +15,29 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Switch } from "@/components/ui/switch"
 import { Pencil, Trash2, Plus, Settings, Eye } from "lucide-react"
 
-interface LeaveType { leave_type_id: number; name: string; description?: string | null }
+interface LeaveType { 
+  leave_type_id: number; 
+  name: string; 
+  description?: string | null;
+  exempt_from_date_restriction?: boolean;
+}
 
 export default function LeaveTypesPage() {
   const { data: session, status } = useSession()
   const [items, setItems] = useState<LeaveType[]>([])
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
+  const [exemptFromDateRestriction, setExemptFromDateRestriction] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   
   // Edit states
   const [editingLeaveType, setEditingLeaveType] = useState<LeaveType | null>(null)
   const [editName, setEditName] = useState("")
   const [editDescription, setEditDescription] = useState("")
+  const [editExemptFromDateRestriction, setEditExemptFromDateRestriction] = useState(false)
   const [editSubmitting, setEditSubmitting] = useState(false)
   const [deleteSubmitting, setDeleteSubmitting] = useState(false)
   
@@ -59,13 +67,17 @@ export default function LeaveTypesPage() {
       const res = await fetch("/api/admin/leave-types", { 
         method: "POST", 
         headers: { "Content-Type": "application/json" }, 
-        body: JSON.stringify({ name: name.trim(), description: description.trim() || null }) 
+        body: JSON.stringify({ 
+          name: name.trim(), 
+          description: description.trim() || null,
+          exempt_from_date_restriction: exemptFromDateRestriction
+        }) 
       })
       if (!res.ok) {
         const error = await res.json()
         throw new Error(error.error || "Failed to add leave type")
       }
-      setName(""); setDescription(""); toast.success("Leave type added"); fetchItems()
+      setName(""); setDescription(""); setExemptFromDateRestriction(false); toast.success("Leave type added"); fetchItems()
     } catch (error: any) { 
       toast.error(error.message || "Failed to add leave type") 
     } finally { setSubmitting(false) }
@@ -80,13 +92,17 @@ export default function LeaveTypesPage() {
       const res = await fetch(`/api/admin/leave-types/${editingLeaveType.leave_type_id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: editName.trim(), description: editDescription.trim() || null })
+        body: JSON.stringify({ 
+          name: editName.trim(), 
+          description: editDescription.trim() || null,
+          exempt_from_date_restriction: editExemptFromDateRestriction
+        })
       })
       if (!res.ok) {
         const error = await res.json()
         throw new Error(error.error || "Failed to update leave type")
       }
-      setEditingLeaveType(null); setEditName(""); setEditDescription(""); 
+      setEditingLeaveType(null); setEditName(""); setEditDescription(""); setEditExemptFromDateRestriction(false);
       toast.success("Leave type updated"); fetchItems()
     } catch (error: any) {
       toast.error(error.message || "Failed to update leave type")
@@ -111,6 +127,7 @@ export default function LeaveTypesPage() {
     setEditingLeaveType(leaveType)
     setEditName(leaveType.name)
     setEditDescription(leaveType.description || "")
+    setEditExemptFromDateRestriction(leaveType.exempt_from_date_restriction || false)
   }
 
   async function startConfigureFields(leaveType: LeaveType) {
@@ -661,6 +678,19 @@ export default function LeaveTypesPage() {
                     placeholder="Brief description of the leave type"
                   />
                 </div>
+                <div className="md:col-span-2">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="exempt-date-restriction"
+                      checked={exemptFromDateRestriction}
+                      onCheckedChange={setExemptFromDateRestriction}
+                    />
+                    <Label htmlFor="exempt-date-restriction">Exempt from Date Restriction</Label>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    When enabled, this leave type can be applied even if there are overlapping approved leaves
+                  </p>
+                </div>
               </div>
               <Button onClick={onAdd} disabled={submitting}>
                 <Plus className="h-4 w-4 mr-2" />
@@ -680,6 +710,7 @@ export default function LeaveTypesPage() {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Description</TableHead>
+                    <TableHead>Date Restriction</TableHead>
                     <TableHead className="w-[150px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -688,6 +719,17 @@ export default function LeaveTypesPage() {
                     <TableRow key={i.leave_type_id}>
                       <TableCell className="font-medium">{i.name}</TableCell>
                       <TableCell>{i.description || "No description"}</TableCell>
+                      <TableCell>
+                        {i.exempt_from_date_restriction ? (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Exempt
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                            Restricted
+                          </span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Button 
@@ -726,6 +768,19 @@ export default function LeaveTypesPage() {
                                     onChange={(e) => setEditDescription(e.target.value)} 
                                     placeholder="Optional description"
                                   />
+                                </div>
+                                <div>
+                                  <div className="flex items-center space-x-2">
+                                    <Switch
+                                      id="edit-exempt-date-restriction"
+                                      checked={editExemptFromDateRestriction}
+                                      onCheckedChange={setEditExemptFromDateRestriction}
+                                    />
+                                    <Label htmlFor="edit-exempt-date-restriction">Exempt from Date Restriction</Label>
+                                  </div>
+                                  <p className="text-sm text-muted-foreground mt-1">
+                                    When enabled, this leave type can be applied even if there are overlapping approved leaves
+                                  </p>
                                 </div>
                               </div>
                               <DialogFooter>

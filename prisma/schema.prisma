@@ -312,6 +312,7 @@ model leave_types {
   name          String       @unique
   description   String?
   isActive      Boolean      @default(true)
+  exempt_from_date_restriction Boolean @default(false) @map("exempt_from_date_restriction")
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   leaveLimits   LeaveLimit[]

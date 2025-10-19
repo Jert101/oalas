@@ -20,7 +20,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
-    console.log('Query params - startDate:', startDate, 'endDate:', endDate)
+    const leaveTypeId = searchParams.get('leaveTypeId')
+    console.log('Query params - startDate:', startDate, 'endDate:', endDate, 'leaveTypeId:', leaveTypeId)
 
     // Get current user
     const user = await prisma.user.findUnique({
@@ -55,7 +56,8 @@ export async function GET(request: NextRequest) {
       const dateCheck = await checkDateConflicts(
         user.users_id,
         new Date(startDate),
-        new Date(endDate)
+        new Date(endDate),
+        leaveTypeId ? parseInt(leaveTypeId) : undefined
       )
       console.log('Date check result:', dateCheck)
       return NextResponse.json(dateCheck)

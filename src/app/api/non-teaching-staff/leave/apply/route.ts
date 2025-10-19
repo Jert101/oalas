@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate application (check for pending applications and date conflicts)
-    const validation = await validateNewApplication(user.users_id, new Date(startDate), new Date(endDate))
+    const validation = await validateNewApplication(user.users_id, new Date(startDate), new Date(endDate), leaveTypeId)
     if (!validation.canApply) {
       return NextResponse.json({ 
         error: validation.reason,

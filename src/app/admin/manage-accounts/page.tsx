@@ -1851,6 +1851,7 @@ export default function ManageAccountsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+        </div>
       </SidebarInset>
     </SidebarProvider>
   )

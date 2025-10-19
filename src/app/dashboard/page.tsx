@@ -51,14 +51,14 @@ export default function DashboardPage() {
       return
     }
 
-    // Office head check (only for non-Finance roles)
+    // Office head check (PRIORITY: check isDepartmentHead FIRST before specific role names)
     if (isDepartmentHead) {
       console.log("[Dashboard] ✅ Office head detected, redirecting to office-head dashboard")
       router.push('/office-head/dashboard')
       return
     }
 
-    if (userRole === 'Dean/Program Head' || userRole === 'Department Head') {
+    if (userRole === 'Dean/Program Head') {
       console.log("[Dashboard] 🏛️ Dean detected, redirecting to dean dashboard")
       router.push('/dean/dashboard')
       return

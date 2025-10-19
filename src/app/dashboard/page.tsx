@@ -51,7 +51,14 @@ export default function DashboardPage() {
       return
     }
 
-    // Office head check (PRIORITY: check isDepartmentHead FIRST before specific role names)
+    // Dean/Program Head and Department Head routing (PRIORITY: Check before Office Head)
+    if (userRole === 'Dean/Program Head' || userRole === 'Department Head') {
+      console.log("[Dashboard] 🏛️ Dean detected, redirecting to dean dashboard")
+      router.push('/dean/dashboard')
+      return
+    }
+
+    // Office head check (AFTER Dean check)
     if (isDepartmentHead) {
       console.log("[Dashboard] ✅ Office head detected, redirecting to office-head dashboard")
       router.push('/office-head/dashboard')
@@ -63,12 +70,6 @@ export default function DashboardPage() {
     if (nonTeachingRoles.includes(userRole || '')) {
       console.log("[Dashboard] 🏢 Non-teaching staff detected, redirecting to non-teaching dashboard")
       router.push('/non-teaching-staff/dashboard')
-      return
-    }
-
-    if (userRole === 'Dean/Program Head') {
-      console.log("[Dashboard] 🏛️ Dean detected, redirecting to dean dashboard")
-      router.push('/dean/dashboard')
       return
     }
 

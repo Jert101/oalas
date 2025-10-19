@@ -60,16 +60,16 @@ export default withAuth(
         return NextResponse.redirect(new URL('/teacher/dashboard', req.url))
       }
       
-      // Non-teaching staff routing (Office Clerk + all Non Teaching Staff category roles)
-      const nonTeachingRoles = ['Office Clerk'] // Will be expanded based on admin/roles Non Teaching Staff category
-      if (nonTeachingRoles.includes(token?.role || '')) {
-        console.log("[Middleware] 🏢 Non-teaching staff detected - redirecting to non-teaching dashboard:", {
+      // Dean/Program Head and Department Head routing (PRIORITY: Check before Office Head)
+      if (token?.role === 'Dean/Program Head' || token?.role === 'Department Head') {
+        console.log("[Middleware] 🏛️ Dean detected - redirecting to dean dashboard:", {
           role: token?.role,
-          redirectingTo: '/non-teaching-staff/dashboard'
+          redirectingTo: '/dean/dashboard'
         })
-        return NextResponse.redirect(new URL('/non-teaching-staff/dashboard', req.url))
+        return NextResponse.redirect(new URL('/dean/dashboard', req.url))
       }
-      // Office Head routing (users with isDepartmentHead: true)
+      
+      // Office Head routing (users with isDepartmentHead: true) - AFTER Dean check
       if ((token as any)?.isDepartmentHead === true) {
         console.log("[Middleware] ✅ Office head detected - redirecting to office-head dashboard:", {
           role: token?.role,
@@ -79,8 +79,14 @@ export default withAuth(
         return NextResponse.redirect(new URL('/office-head/dashboard', req.url))
       }
       
-      if (token?.role === 'Dean/Program Head' || token?.role === 'Department Head') {
-        return NextResponse.redirect(new URL('/dean/dashboard', req.url))
+      // Non-teaching staff routing (Office Clerk + all Non Teaching Staff category roles)
+      const nonTeachingRoles = ['Office Clerk'] // Will be expanded based on admin/roles Non Teaching Staff category
+      if (nonTeachingRoles.includes(token?.role || '')) {
+        console.log("[Middleware] 🏢 Non-teaching staff detected - redirecting to non-teaching dashboard:", {
+          role: token?.role,
+          redirectingTo: '/non-teaching-staff/dashboard'
+        })
+        return NextResponse.redirect(new URL('/non-teaching-staff/dashboard', req.url))
       }
       
       // Default to teacher dashboard

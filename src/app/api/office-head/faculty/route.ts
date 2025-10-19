@@ -7,16 +7,7 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    console.log('🔍 Dean Faculty API - Session check:', {
-      hasSession: !!session,
-      hasUser: !!session?.user,
-      userEmail: session?.user?.email,
-      userRole: (session?.user as any)?.role,
-      userId: session?.user?.id
-    })
-    
     if (!session?.user?.email) {
-      console.log('❌ No session or user email found')
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
@@ -33,25 +24,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    // Verify user is a Dean/Program Head
-    console.log('🔍 Dean Faculty API - User verification:', {
-      userId: user.users_id,
-      userEmail: user.email,
-      userName: user.name,
-      roleName: user.role?.name,
-      roleId: user.role?.role_id,
-      departmentId: user.department_id,
-      departmentName: user.department?.name
-    })
+    // Allow Dean/Program Head, Department Head, and office heads
+    const userRole = session.user.role
+    const isDepartmentHead = (session.user as any)?.isDepartmentHead
     
-    // Allow both Dean/Program Head and Department Head to access faculty
-    const allowedRoles = ["Dean/Program Head", "Department Head"]
-    if (!allowedRoles.includes(user.role?.name || "")) {
-      console.log('❌ Access denied - User role:', user.role?.name, 'Expected: Dean/Program Head or Department Head')
+    const allowedRoles = ["Dean/Program Head", "Department Head", "Admin"]
+    const isAllowedRole = allowedRoles.includes(userRole || "")
+    const isOfficeHead = isDepartmentHead === true
+    
+    if (!isAllowedRole && !isOfficeHead) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 })
     }
     
-    console.log('✅ User verified as:', user.role?.name)
 
     if (!user.department_id) {
       return NextResponse.json({ error: "User is not assigned to a department" }, { status: 400 })

@@ -71,19 +71,8 @@ export default function DeanDashboardPage() {
     const isAllowedRole = allowedRoles.includes(userRole || "")
     const isOfficeHead = isDepartmentHead === true
     
-    console.log("[DeanDashboard] Access check:", {
-      userRole,
-      isDepartmentHead,
-      isAllowedRole,
-      isOfficeHead,
-      shouldAllow: isAllowedRole || isOfficeHead
-    })
-    
     if (!isAllowedRole && !isOfficeHead) {
-      console.log("[DeanDashboard] Access denied, redirecting to main dashboard")
       router.push("/dashboard")
-    } else {
-      console.log("[DeanDashboard] Access granted for:", userRole)
     }
   }, [session, status, router])
 

@@ -38,19 +38,9 @@ export default function DeanLayout({ children }: DeanLayoutProps) {
     const isAllowedRole = allowedRoles.includes(userRole || "")
     const isOfficeHead = isDepartmentHead === true
     
-    console.log("[DeanLayout] Access check:", {
-      userRole,
-      isDepartmentHead,
-      isAllowedRole,
-      isOfficeHead,
-      shouldAllow: isAllowedRole || isOfficeHead
-    })
-    
     if (!isAllowedRole && !isOfficeHead) {
-      console.log("[DeanLayout] Access denied, redirecting to main dashboard")
       router.push("/dashboard")
     } else {
-      console.log("[DeanLayout] Access granted for:", userRole)
       setIsLoading(false)
     }
   }, [status, session, router])

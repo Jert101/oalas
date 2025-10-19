@@ -40,16 +40,7 @@ export default function DeanFacultyPage() {
   useEffect(() => {
     const loadFaculty = async () => {
       try {
-        console.log('🔍 Loading faculty data...')
-        console.log('👤 Current session:', {
-          status,
-          hasSession: !!session,
-          userEmail: session?.user?.email,
-          userRole: (session?.user as any)?.role,
-          userId: session?.user?.id
-        })
         const res = await fetch('/api/office-head/faculty')
-        console.log('📡 API Response status:', res.status)
         
         if (!res.ok) {
           const errorText = await res.text()
@@ -58,12 +49,8 @@ export default function DeanFacultyPage() {
         }
         
         const data = await res.json()
-        console.log('📊 API Response data:', data)
         
         if (data.success) {
-          console.log('✅ Faculty data loaded:', data.data.faculty?.length || 0, 'members')
-          console.log('🏢 Department:', data.data.department)
-          console.log('👤 User Role:', data.data.userRole)
           setFaculty(data.data.faculty || [])
         } else {
           console.error('❌ API returned error:', data.error)
@@ -209,13 +196,6 @@ export default function DeanFacultyPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {(() => {
-            console.log('🎨 Rendering faculty list:', {
-              facultyCount: faculty.length,
-              faculty: faculty.map(f => ({ name: f.name, email: f.email, role: f.role?.name }))
-            })
-            return null
-          })()}
           {faculty.length === 0 ? (
             <div className="text-center py-8">
               <Users className="mx-auto h-12 w-12 text-gray-400" />

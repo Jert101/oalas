@@ -20,11 +20,8 @@ export async function GET(req: NextRequest) {
     const isOfficeHead = isDepartmentHead === true
     
     if (!isAllowedRole && !isOfficeHead) {
-      console.log("[DeanStats] Access denied for role:", userRole, "isDepartmentHead:", isDepartmentHead)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
-    
-    console.log("[DeanStats] Access granted for role:", userRole, "isDepartmentHead:", isDepartmentHead)
 
     // Get the user's data (dean, department head, or office head)
     const currentUser = await prisma.user.findFirst({
@@ -37,16 +34,26 @@ export async function GET(req: NextRequest) {
       }
     })
 
-    // For office heads without departments, return basic stats for all departments
+    // For office heads, filter by their department only
     // For deans/department heads, filter by their department
     const userDepartmentId = currentUser?.department?.department_id
     
-    console.log("[DeanStats] User department:", {
-      userId: currentUser?.users_id,
-      role: currentUser?.role?.name,
-      departmentId: userDepartmentId,
-      departmentName: currentUser?.department?.name
-    })
+    // If user has no department, they shouldn't see any data
+    if (!userDepartmentId) {
+      return NextResponse.json({ 
+        success: true, 
+        data: {
+          pendingApplications: 0,
+          approvedApplications: 0,
+          deniedApplications: 0,
+          totalApplications: 0,
+          facultyMembers: 0,
+          recentApplications: [],
+          departmentName: "No Department Assigned"
+        }
+      })
+    }
+    
 
     // Fetch dean-specific statistics
     const [
@@ -57,57 +64,49 @@ export async function GET(req: NextRequest) {
       facultyMembers,
       recentApplications
     ] = await Promise.all([
-      // Pending applications (filtered by department if user has one)
+      // Pending applications (filtered by department)
       prisma.leaveApplication.count({
         where: {
           status: "PENDING",
-          ...(userDepartmentId && {
-            user: {
-              department_id: userDepartmentId
-            }
-          })
+          user: {
+            department_id: userDepartmentId
+          }
         }
       }),
 
-      // Approved applications (filtered by department if user has one)
+      // Approved applications (filtered by department)
       prisma.leaveApplication.count({
         where: {
           status: "APPROVED",
-          ...(userDepartmentId && {
-            user: {
-              department_id: userDepartmentId
-            }
-          })
+          user: {
+            department_id: userDepartmentId
+          }
         }
       }),
 
-      // Denied applications (filtered by department if user has one)
+      // Denied applications (filtered by department)
       prisma.leaveApplication.count({
         where: {
           status: "DENIED",
-          ...(userDepartmentId && {
-            user: {
-              department_id: userDepartmentId
-            }
-          })
+          user: {
+            department_id: userDepartmentId
+          }
         }
       }),
 
-      // Total applications (filtered by department if user has one)
+      // Total applications (filtered by department)
       prisma.leaveApplication.count({
         where: {
-          ...(userDepartmentId && {
-            user: {
-              department_id: userDepartmentId
-            }
-          })
+          user: {
+            department_id: userDepartmentId
+          }
         }
       }),
 
-      // Faculty members (filtered by department if user has one)
+      // Faculty members (filtered by department)
       prisma.user.count({
         where: {
-          ...(userDepartmentId && { department_id: userDepartmentId }),
+          department_id: userDepartmentId,
           isActive: true,
           role: {
             name: "Teacher/Instructor"
@@ -115,15 +114,13 @@ export async function GET(req: NextRequest) {
         }
       }),
 
-      // Recent applications (last 5, filtered by department if user has one)
+      // Recent applications (last 5, filtered by department)
       prisma.leaveApplication.findMany({
         take: 5,
         where: {
-          ...(userDepartmentId && {
-            user: {
-              department_id: userDepartmentId
-            }
-          })
+          user: {
+            department_id: userDepartmentId
+          }
         },
         orderBy: {
           createdAt: 'desc'

@@ -65,9 +65,7 @@ export default function DeanApplicationsPage() {
   useEffect(() => {
     const loadApplications = async () => {
       try {
-        console.log('🔍 Loading applications data...')
         const res = await fetch('/api/office-head/applications')
-        console.log('📡 API Response status:', res.status)
         
         if (!res.ok) {
           const errorText = await res.text()
@@ -76,11 +74,8 @@ export default function DeanApplicationsPage() {
         }
         
         const data = await res.json()
-        console.log('📊 API Response data:', data)
         
         if (data.success) {
-          console.log('✅ Applications data loaded:', data.data.applications?.length || 0, 'applications')
-          console.log('🏢 Department:', data.data.deanDepartment)
           setApplicationsData(data.data)
         } else {
           console.error('❌ API returned error:', data.error)
@@ -184,14 +179,6 @@ export default function DeanApplicationsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {(() => {
-            console.log('🎨 Rendering applications list:', {
-              hasApplicationsData: !!applicationsData,
-              applicationsCount: applicationsData?.applications?.length || 0,
-              department: applicationsData?.deanDepartment
-            })
-            return null
-          })()}
           {!applicationsData || applicationsData.applications.length === 0 ? (
             <div className="text-center py-8">
               <FileText className="mx-auto h-12 w-12 text-gray-400" />

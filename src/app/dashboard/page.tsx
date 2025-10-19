@@ -53,8 +53,8 @@ export default function DashboardPage() {
 
     // Office head check (only for non-Finance roles)
     if (isDepartmentHead) {
-      console.log("[Dashboard] ✅ Office head detected, redirecting to dean dashboard")
-      router.push('/dean/dashboard')
+      console.log("[Dashboard] ✅ Office head detected, redirecting to office-head dashboard")
+      router.push('/office-head/dashboard')
       return
     }
 

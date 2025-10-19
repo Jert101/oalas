@@ -49,6 +49,15 @@ interface LeaveApplication {
     name: string
     description?: string
   }
+  // Travel order specific fields
+  destination?: string
+  purpose?: string
+  transportationFee?: number
+  seminarConferenceFee?: number
+  mealsAccommodations?: number
+  totalCashRequested?: number
+  remarks?: string
+  supportingDocuments?: string
   user: {
     name: string
     email: string
@@ -492,9 +501,11 @@ export default function DeanApplicationDetailPage() {
        </div>
 
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Leave Application Details</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+          {application.travel_order_id ? 'Travel Order Details' : 'Leave Application Details'}
+        </h1>
         <p className="text-muted-foreground text-sm sm:text-base">
-          Application ID: {application.leave_application_id}
+          Application ID: {application.travel_order_id || application.leave_application_id}
         </p>
       </div>
 
@@ -528,44 +539,83 @@ export default function DeanApplicationDetailPage() {
           </CardContent>
         </Card>
 
-        {/* Leave Details */}
+        {/* Application Details */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
-              Leave Details
+              {application.travel_order_id ? 'Travel Details' : 'Leave Details'}
             </CardTitle>
           </CardHeader>
-                     <CardContent className="space-y-4">
-             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-               <div>
-                 <p className="text-sm font-medium text-gray-500">Start Date</p>
-                 <p className="text-sm">{formatDate(application.startDate)}</p>
-               </div>
-               <div>
-                 <p className="text-sm font-medium text-gray-500">End Date</p>
-                 <p className="text-sm">{formatDate(application.endDate)}</p>
-               </div>
-               <div>
-                 <p className="text-sm font-medium text-gray-500">Number of Days</p>
-                 <p className="text-sm">{application.numberOfDays} days</p>
-               </div>
-               <div>
-                 <p className="text-sm font-medium text-gray-500">Hours</p>
-                 <p className="text-sm">{application.hours} hours</p>
-               </div>
-               <div>
-                 <p className="text-sm font-medium text-gray-500">Leave Type</p>
-                 <p className="text-sm font-medium">{application.leaveType?.name || 'N/A'}</p>
-               </div>
-               <div>
-                 <p className="text-sm font-medium text-gray-500">Payment Status</p>
-                 <Badge className={application.paymentStatus === 'PAID' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
-                   {application.paymentStatus}
-                 </Badge>
-               </div>
-             </div>
-           </CardContent>
+          <CardContent className="space-y-4">
+            {application.travel_order_id ? (
+              // Travel Order Details
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Destination</p>
+                  <p className="text-sm">{application.destination || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Purpose</p>
+                  <p className="text-sm">{application.purpose || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Date of Travel</p>
+                  <p className="text-sm">{formatDate(application.startDate)}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Expected Return</p>
+                  <p className="text-sm">{formatDate(application.endDate)}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Transportation Fee</p>
+                  <p className="text-sm">₱{application.transportationFee || 0}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Seminar/Conference Fee</p>
+                  <p className="text-sm">₱{application.seminarConferenceFee || 0}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Meals & Accommodations</p>
+                  <p className="text-sm">₱{application.mealsAccommodations || 0}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Total Cash Requested</p>
+                  <p className="text-sm font-bold">₱{application.totalCashRequested || 0}</p>
+                </div>
+              </div>
+            ) : (
+              // Leave Application Details
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Start Date</p>
+                  <p className="text-sm">{formatDate(application.startDate)}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">End Date</p>
+                  <p className="text-sm">{formatDate(application.endDate)}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Number of Days</p>
+                  <p className="text-sm">{application.numberOfDays} days</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Hours</p>
+                  <p className="text-sm">{application.hours} hours</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Leave Type</p>
+                  <p className="text-sm font-medium">{application.leaveType?.name || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Payment Status</p>
+                  <Badge className={application.paymentStatus === 'PAID' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                    {application.paymentStatus}
+                  </Badge>
+                </div>
+              </div>
+            )}
+          </CardContent>
         </Card>
 
         {/* Application Timeline */}
@@ -607,31 +657,79 @@ export default function DeanApplicationDetailPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {shouldShowReason(application.leaveType?.name || '') && application.reason && (
-            <div>
-              <h4 className="text-sm font-medium text-gray-900 mb-2">Reason for Leave</h4>
-              <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-md">
-                {application.reason}
-              </p>
-            </div>
-          )}
+          {application.travel_order_id ? (
+            // Travel Order Details
+            <>
+              {application.purpose && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 mb-2">Purpose of Travel</h4>
+                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-md">
+                    {application.purpose}
+                  </p>
+                </div>
+              )}
+              
+              {application.remarks && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 mb-2">Additional Remarks</h4>
+                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-md">
+                    {application.remarks}
+                  </p>
+                </div>
+              )}
+              
+              {application.supportingDocuments && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 mb-2">Supporting Documents</h4>
+                  <div className="bg-gray-50 p-4 rounded-lg border">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <FileImage className="h-4 w-4 text-blue-600" />
+                        <span className="text-sm font-medium">Supporting Document</span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDownloadFile(application.supportingDocuments!)}
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Download
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            // Leave Application Details
+            <>
+              {shouldShowReason(application.leaveType?.name || '') && application.reason && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 mb-2">Reason for Leave</h4>
+                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-md">
+                    {application.reason}
+                  </p>
+                </div>
+              )}
 
-          {shouldShowSpecificPurpose(application.leaveType?.name || '') && application.specificPurpose && (
-            <div>
-              <h4 className="text-sm font-medium text-gray-900 mb-2">Specific Purpose</h4>
-              <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-md">
-                {application.specificPurpose}
-              </p>
-            </div>
-          )}
+              {shouldShowSpecificPurpose(application.leaveType?.name || '') && application.specificPurpose && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 mb-2">Specific Purpose</h4>
+                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-md">
+                    {application.specificPurpose}
+                  </p>
+                </div>
+              )}
 
-          {shouldShowDescriptionOfSickness(application.leaveType?.name || '') && application.descriptionOfSickness && (
-            <div>
-              <h4 className="text-sm font-medium text-gray-900 mb-2">Description of Sickness</h4>
-              <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-md">
-                {application.descriptionOfSickness}
-              </p>
-            </div>
+              {shouldShowDescriptionOfSickness(application.leaveType?.name || '') && application.descriptionOfSickness && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 mb-2">Description of Sickness</h4>
+                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-md">
+                    {application.descriptionOfSickness}
+                  </p>
+                </div>
+              )}
+            </>
           )}
 
           {application.medicalProof && (

@@ -23,8 +23,8 @@ export default function NonTeachingStaffLayout({
     if (status === "unauthenticated") {
       router.push("/login")
     } else if (status === "authenticated") {
-      // Check if user has non-teaching staff role
-      const nonTeachingRoles = ["Non Teaching Personnel", "Office Clerk", "Administrative Assistant", "Library Staff", "IT Support", "Security Office", "Clinic Staff", "Accounting Office"]
+      // Check if user has non-teaching staff role (Office Clerk + all Non Teaching Staff category roles)
+      const nonTeachingRoles = ["Office Clerk"] // Will be expanded based on admin/roles Non Teaching Staff category
       if (!nonTeachingRoles.includes(session?.user?.role || "")) {
         router.push("/dashboard")
       } else {
@@ -44,7 +44,7 @@ export default function NonTeachingStaffLayout({
     )
   }
 
-  if (!session || !["Non Teaching Personnel", "Office Clerk", "Administrative Assistant", "Library Staff", "IT Support", "Security Office", "Clinic Staff", "Accounting Office"].includes(session.user.role || "")) {
+  if (!session || !["Office Clerk"].includes(session.user.role || "")) {
     return null
   }
 

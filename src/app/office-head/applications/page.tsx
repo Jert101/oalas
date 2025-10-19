@@ -45,7 +45,7 @@ interface LeaveApplication {
   }
 }
 
-interface DeanApplicationsData {
+interface OfficeHeadApplicationsData {
   applications: LeaveApplication[]
   deanDepartment: string
   currentPeriod: {
@@ -55,8 +55,8 @@ interface DeanApplicationsData {
   }
 }
 
-export default function DeanApplicationsPage() {
-  const [applicationsData, setApplicationsData] = useState<DeanApplicationsData | null>(null)
+export default function OfficeHeadApplicationsPage() {
+  const [applicationsData, setApplicationsData] = useState<OfficeHeadApplicationsData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
   
@@ -186,15 +186,6 @@ export default function DeanApplicationsPage() {
               <p className="mt-1 text-sm text-gray-500">
                 No leave applications have been submitted from your department faculty yet.
               </p>
-              <div className="mt-4 p-4 bg-gray-100 rounded-lg text-left">
-                <p className="text-sm text-gray-600">
-                  <strong>Debug Info:</strong><br/>
-                  Has applications data: {applicationsData ? 'Yes' : 'No'}<br/>
-                  Applications count: {applicationsData?.applications?.length || 0}<br/>
-                  Department: {applicationsData?.deanDepartment || 'None'}<br/>
-                  Loading state: {isLoading ? 'Yes' : 'No'}
-                </p>
-              </div>
             </div>
           ) : (
             <div className="space-y-4">

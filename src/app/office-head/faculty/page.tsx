@@ -32,7 +32,7 @@ interface FacultyMember {
   createdAt: string
 }
 
-export default function DeanFacultyPage() {
+export default function OfficeHeadFacultyPage() {
   const [faculty, setFaculty] = useState<FacultyMember[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const { data: session, status } = useSession()
@@ -203,19 +203,6 @@ export default function DeanFacultyPage() {
               <p className="mt-1 text-sm text-gray-500">
                 No faculty members are currently assigned to your department.
               </p>
-              <div className="mt-4 p-4 bg-gray-100 rounded-lg text-left">
-                <p className="text-sm text-gray-600">
-                  <strong>Debug Info:</strong><br/>
-                  Faculty array length: {faculty.length}<br/>
-                  Loading state: {isLoading ? 'Yes' : 'No'}<br/>
-                  <br/>
-                  <strong>Session Info:</strong><br/>
-                  Status: {status}<br/>
-                  Email: {session?.user?.email || 'None'}<br/>
-                  Role: {(session?.user as any)?.role || 'None'}<br/>
-                  User ID: {session?.user?.id || 'None'}
-                </p>
-              </div>
             </div>
           ) : (
             <div className="space-y-4">

@@ -156,7 +156,9 @@ export default function DeanApplicationDetailPage() {
     
     setIsApproving(true)
     try {
-      const res = await fetch(`/api/dean/applications/${application.leave_application_id}/approve`, {
+      // Use the correct ID based on application type
+      const applicationId = application.travel_order_id || application.leave_application_id
+      const res = await fetch(`/api/dean/applications/${applicationId}/approve`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -188,7 +190,9 @@ export default function DeanApplicationDetailPage() {
     
     setIsRejecting(true)
     try {
-      const res = await fetch(`/api/dean/applications/${application.leave_application_id}/reject`, {
+      // Use the correct ID based on application type
+      const applicationId = application.travel_order_id || application.leave_application_id
+      const res = await fetch(`/api/dean/applications/${applicationId}/reject`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

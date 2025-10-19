@@ -83,9 +83,32 @@ export async function POST(
     }
 
     const resolvedParams = await params
-    const applicationId = parseInt(resolvedParams.id)
+    const originalId = resolvedParams.id
+    
+    // Handle different ID formats: "leave_24", "travel_5", or just "24"
+    let applicationId: number
+    let isTravelOrder = false
+    
+    if (originalId.startsWith('leave_')) {
+      applicationId = parseInt(originalId.replace('leave_', ''))
+      isTravelOrder = false
+    } else if (originalId.startsWith('travel_')) {
+      applicationId = parseInt(originalId.replace('travel_', ''))
+      isTravelOrder = true
+    } else {
+      applicationId = parseInt(originalId)
+      isTravelOrder = false
+    }
+
+    console.log('🔍 Dean Reject API - Request details:', {
+      applicationId: applicationId,
+      originalId: originalId,
+      isTravelOrder: isTravelOrder,
+      isNaN: isNaN(applicationId)
+    })
 
     if (isNaN(applicationId)) {
+      console.log('❌ Invalid application ID:', originalId)
       return NextResponse.json({ error: "Invalid application ID" }, { status: 400 })
     }
 
@@ -97,28 +120,55 @@ export async function POST(
       return NextResponse.json({ error: "Rejection reason is required" }, { status: 400 })
     }
 
-    // Get the application
-    const application = await prisma.leaveApplication.findUnique({
-      where: {
-        leave_application_id: applicationId
-      },
-      include: {
-        user: {
-          select: {
-            name: true,
-            email: true,
-            users_id: true,
-            department_id: true,
-            department: {
-              select: {
-                name: true,
-                department_id: true
+    // Get the application (either leave or travel)
+    console.log('🔍 Dean Reject API - Looking up application:', applicationId, 'Type:', isTravelOrder ? 'travel' : 'leave')
+    
+    let application
+    if (isTravelOrder) {
+      application = await prisma.travelOrder.findUnique({
+        where: {
+          travel_order_id: applicationId
+        },
+        include: {
+          user: {
+            select: {
+              name: true,
+              email: true,
+              users_id: true,
+              department_id: true,
+              department: {
+                select: {
+                  name: true,
+                  department_id: true
+                }
               }
             }
           }
         }
-      }
-    })
+      })
+    } else {
+      application = await prisma.leaveApplication.findUnique({
+        where: {
+          leave_application_id: applicationId
+        },
+        include: {
+          user: {
+            select: {
+              name: true,
+              email: true,
+              users_id: true,
+              department_id: true,
+              department: {
+                select: {
+                  name: true,
+                  department_id: true
+                }
+              }
+            }
+          }
+        }
+      })
+    }
 
     if (!application) {
       return NextResponse.json({ error: "Application not found" }, { status: 404 })
@@ -179,35 +229,60 @@ export async function POST(
       return NextResponse.json({ error: "Application is not in pending status" }, { status: 400 })
     }
 
-    // Update application status to DEAN_REJECTED
-    const updatedApplication = await prisma.leaveApplication.update({
-      where: {
-        leave_application_id: applicationId
-      },
-      data: {
-        status: 'DEAN_REJECTED',
-        deanReviewedAt: new Date(),
-        deanReviewedBy: user.users_id,
-        deanRejectionReason: rejectionReason.trim(),
-        deanComments: `Rejected by Dean: ${rejectionReason.trim()}`
-      },
-      include: {
-        user: {
-          select: {
-            name: true,
-            email: true
+    // Update application status to DEAN_REJECTED (handle both leave and travel)
+    let updatedApplication
+    if (isTravelOrder) {
+      updatedApplication = await prisma.travelOrder.update({
+        where: {
+          travel_order_id: applicationId
+        },
+        data: {
+          status: 'DEAN_REJECTED',
+          deanReviewedAt: new Date(),
+          deanReviewedBy: user.users_id,
+          deanRejectionReason: rejectionReason.trim(),
+          deanComments: `Rejected by Dean: ${rejectionReason.trim()}`
+        },
+        include: {
+          user: {
+            select: {
+              name: true,
+              email: true
+            }
           }
         }
-      }
-    })
+      })
+    } else {
+      updatedApplication = await prisma.leaveApplication.update({
+        where: {
+          leave_application_id: applicationId
+        },
+        data: {
+          status: 'DEAN_REJECTED',
+          deanReviewedAt: new Date(),
+          deanReviewedBy: user.users_id,
+          deanRejectionReason: rejectionReason.trim(),
+          deanComments: `Rejected by Dean: ${rejectionReason.trim()}`
+        },
+        include: {
+          user: {
+            select: {
+              name: true,
+              email: true
+            }
+          }
+        }
+      })
+    }
 
     // Send notification to applicant (includes email)
+    const applicationType = isTravelOrder ? 'Travel Order' : (application.leaveType?.name || 'Leave')
     await notifyLeaveApplicationRejected(
       application.user.users_id, 
       applicationId, 
       rejectionReason,
       user.name,
-      application.leaveType?.name || 'Leave'
+      applicationType
     )
 
     // Send real-time application update

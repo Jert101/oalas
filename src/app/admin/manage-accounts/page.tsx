@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { formatRoleDisplay } from "@/lib/role-display"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -999,7 +1000,7 @@ export default function ManageAccountsPage() {
                       <TableCell>{user.email}</TableCell>
                       <TableCell>
                         <Badge variant={getRoleBadgeVariant(user.role?.name || "")}>
-                          {user.role?.name || "No role"}
+                          {formatRoleDisplay(user.role?.name, user.department?.name, user.isDepartmentHead)}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -1167,7 +1168,7 @@ export default function ManageAccountsPage() {
                         ID: {selectedUser.users_id}
                       </Badge>
                       <Badge variant="outline" className="font-medium">
-                        {selectedUser.role?.name || "No role assigned"}
+                        {formatRoleDisplay(selectedUser.role?.name, selectedUser.department?.name, selectedUser.isDepartmentHead)}
                       </Badge>
                     </div>
                   </div>
@@ -1234,7 +1235,7 @@ export default function ManageAccountsPage() {
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Role</label>
-                      <p className="text-sm font-medium mt-1">{selectedUser.role?.name || "No role assigned"}</p>
+                      <p className="text-sm font-medium mt-1">{formatRoleDisplay(selectedUser.role?.name, selectedUser.department?.name, selectedUser.isDepartmentHead)}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Employment Status</label>

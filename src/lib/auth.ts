@@ -204,6 +204,11 @@ export const authOptions: NextAuthOptions = {
                 select: {
                   name: true
                 }
+              },
+              department: {
+                select: {
+                  name: true
+                }
               }
             }
           })
@@ -231,6 +236,7 @@ export const authOptions: NextAuthOptions = {
             ;(token as any).isEmailVerified = dbUser.isEmailVerified
             ;(token as any).isDepartmentHead = dbUser.isDepartmentHead
             ;(token as any).profilePicture = dbUser.profilePicture || (token as any).profilePicture
+            ;(token as any).department = dbUser.department?.name
             if (dbUser.name) {
               token.name = dbUser.name
             }
@@ -310,6 +316,7 @@ export const authOptions: NextAuthOptions = {
         ;(session.user as any).role = token.role as string
         ;(session.user as any).isEmailVerified = token.isEmailVerified as boolean
         ;(session.user as any).isDepartmentHead = (token as any).isDepartmentHead as boolean
+        ;(session.user as any).department = (token as any).department as string
         // profilePicture will be set fresh from DB below
         ;(session.user as any).gender = (token as any).gender as string | undefined
         ;(session.user as any).phone = (token as any).phone as string | undefined

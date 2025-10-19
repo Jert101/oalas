@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation"
 import Image from "next/image"
 
 import { NavUser } from "@/components/nav-user"
+import { getUserDisplayRole } from "@/lib/role-display"
 import {
   Sidebar,
   SidebarContent,

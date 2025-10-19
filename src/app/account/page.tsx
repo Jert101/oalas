@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
+import { getUserDisplayRole } from "@/lib/role-display"
 import { 
   IconUser, 
   IconKey, 
@@ -302,7 +303,7 @@ export default function AccountSettingsPage() {
                   </p>
                 </div>
                 <Badge variant="outline" className="text-sm w-fit">
-                  {user.role}
+                  {getUserDisplayRole(session)}
                 </Badge>
               </div>
             </div>

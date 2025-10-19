@@ -231,10 +231,7 @@ export default function CalendarSettingsPage() {
     fetchCalendarPeriods()
   }, [])
 
-  // Authentication check
-  if (status === "loading") {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>
-  }
+  // Remove full-screen loading animation to prevent sidebar from disappearing
 
   if (status === "unauthenticated") {
     redirect("/auth/signin")
@@ -244,16 +241,7 @@ export default function CalendarSettingsPage() {
     redirect("/dashboard")
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <Clock className="mx-auto h-8 w-8 animate-spin text-[#1E293B]" />
-          <p className="mt-2 text-sm text-gray-600">Loading calendar settings...</p>
-        </div>
-      </div>
-    )
-  }
+  // Remove full-screen loading animation to prevent sidebar from disappearing
 
   return (
     <SidebarProvider

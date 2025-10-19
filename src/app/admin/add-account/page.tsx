@@ -406,13 +406,7 @@ export default function AddAccountPage() {
     }
   }
 
-  if (isDataLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Loading...</div>
-      </div>
-    )
-  }
+  // Remove full-screen loading animation to prevent sidebar from disappearing
 
   const requiresDepartment = watchedRoleCategory && (() => {
     const selectedCategory = roleCategories.find(c => c.category_id.toString() === watchedRoleCategory)
@@ -447,7 +441,7 @@ export default function AddAccountPage() {
               </CardHeader>
               <CardContent className="p-6 relative">
                 {isLoading && (
-                  <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-50 rounded-lg">
+                  <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-50 rounded-lg">
                     <div className="flex flex-col items-center gap-2">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FF8C00]"></div>
                       <span className="text-sm font-medium">Creating account...</span>

@@ -29,18 +29,51 @@ export async function GET(
 
     // Allow both Dean/Program Head and Department Head to access application details
     const allowedRoles = ["Dean/Program Head", "Department Head"]
-    if (!allowedRoles.includes(user.role?.name || "")) {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 })
+    const isAllowed = user.role?.name && allowedRoles.includes(user.role.name)
+    const isDepartmentHead = user.isDepartmentHead === true
+    
+    console.log('🔍 Dean Application Detail API - User verification:', {
+      userId: user.users_id,
+      userEmail: user.email,
+      userName: user.name,
+      roleName: user.role?.name,
+      isDepartmentHead: isDepartmentHead,
+      isAllowed: isAllowed
+    })
+    
+    if (!isAllowed && !isDepartmentHead) {
+      console.log('❌ Access denied - User role:', user.role?.name, 'Expected: Dean/Program Head or Department Head')
+      return NextResponse.json({ error: "Access denied. Dean/Program Head or Department Head role required." }, { status: 403 })
     }
 
     const resolvedParams = await params
-    const applicationId = parseInt(resolvedParams.id)
+    const originalId = resolvedParams.id
+    
+    // Handle different ID formats: "leave_24", "travel_5", or just "24"
+    let applicationId: number
+    if (originalId.startsWith('leave_')) {
+      applicationId = parseInt(originalId.replace('leave_', ''))
+    } else if (originalId.startsWith('travel_')) {
+      // For travel orders, we need to handle differently
+      console.log('❌ Travel order ID detected, redirecting to travel order API:', originalId)
+      return NextResponse.json({ error: "Travel orders are not handled by this endpoint" }, { status: 400 })
+    } else {
+      applicationId = parseInt(originalId)
+    }
+
+    console.log('🔍 Dean Application Detail API - Request details:', {
+      applicationId: applicationId,
+      originalId: originalId,
+      isNaN: isNaN(applicationId)
+    })
 
     if (isNaN(applicationId)) {
+      console.log('❌ Invalid application ID:', originalId)
       return NextResponse.json({ error: "Invalid application ID" }, { status: 400 })
     }
 
     // Get the specific application
+    console.log('🔍 Dean Application Detail API - Looking up application:', applicationId)
     const application = await prisma.leaveApplication.findUnique({
       where: {
         leave_application_id: applicationId
@@ -77,6 +110,17 @@ export async function GET(
       }
     })
 
+    console.log('🔍 Dean Application Detail API - Application found:', !!application)
+    if (application) {
+      console.log('🔍 Dean Application Detail API - Application details:', {
+        id: application.leave_application_id,
+        applicantName: application.user.name,
+        applicantEmail: application.user.email,
+        applicantDeptId: application.user.department_id,
+        applicantDeptName: application.user.department?.name
+      })
+    }
+
     // Get leave type information
     const leaveType = application ? await prisma.leave_types.findUnique({
       where: {
@@ -97,11 +141,22 @@ export async function GET(
     const deanDeptId = user.department_id
     const applicantDeptId = (application.user as any)?.department_id ?? application.user.department?.department_id
 
-    console.log('🔎 Department check', { deanDeptId, applicantDeptId, deanEmail: user.email, applicantEmail: application.user.email })
+    console.log('🔎 Dean Application Detail API - Department verification:', { 
+      deanDeptId, 
+      applicantDeptId, 
+      deanEmail: user.email, 
+      applicantEmail: application.user.email,
+      deanDeptName: user.department?.name,
+      applicantDeptName: application.user.department?.name,
+      departmentsMatch: deanDeptId === applicantDeptId
+    })
 
     if (!deanDeptId || !applicantDeptId || deanDeptId !== applicantDeptId) {
+      console.log('❌ Dean Application Detail API - Department mismatch, access denied')
       return NextResponse.json({ error: "Access denied - Application not in your department" }, { status: 403 })
     }
+
+    console.log('✅ Dean Application Detail API - Department verification passed')
 
     return NextResponse.json({
       success: true,

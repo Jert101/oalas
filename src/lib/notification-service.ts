@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma"
-import { sendEmail, emailTemplates } from "@/lib/email-service"
+import { sendEmail, emailTemplates } from "@/lib/email-service-simple"
 
 // Import WebSocket for server-side usage
 let WebSocket: any

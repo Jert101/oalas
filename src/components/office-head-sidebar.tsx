@@ -57,21 +57,6 @@ const officeHeadNavigationItems = [
     icon: IconUsers,
   },
   {
-    title: "Approval Queue",
-    url: "/office-head/approvals",
-    icon: IconChecklist,
-  },
-  {
-    title: "Department Reports",
-    url: "/office-head/reports",
-    icon: IconChartBar,
-  },
-  {
-    title: "Faculty Status",
-    url: "/office-head/faculty-status",
-    icon: IconUserCheck,
-  },
-  {
     title: "Calendar Overview",
     url: "/office-head/calendar",
     icon: IconCalendar,

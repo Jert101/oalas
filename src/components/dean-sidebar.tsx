@@ -57,21 +57,6 @@ const deanNavigationItems = [
     icon: IconUsers,
   },
   {
-    title: "Approval Queue",
-    url: "/dean/approvals",
-    icon: IconChecklist,
-  },
-  {
-    title: "Department Reports",
-    url: "/dean/reports",
-    icon: IconChartBar,
-  },
-  {
-    title: "Faculty Status",
-    url: "/dean/faculty-status",
-    icon: IconUserCheck,
-  },
-  {
     title: "Calendar Overview",
     url: "/dean/calendar",
     icon: IconCalendar,

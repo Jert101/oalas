@@ -226,6 +226,11 @@ model TravelOrder {
   calendarPeriod       CalendarPeriod?   @relation(fields: [calendar_period_id], references: [calendar_period_id])
   reviewer             User?             @relation("ReviewedTravelOrders", fields: [reviewedBy], references: [users_id])
   user                 User              @relation(fields: [users_id], references: [users_id])
+  // Dean approval fields
+  deanReviewedAt       DateTime?
+  deanReviewedBy       String?
+  deanComments         String?           @db.Text
+  deanRejectionReason  String?           @db.Text
 
   @@index([calendar_period_id], map: "travel_orders_calendar_period_id_fkey")
   @@index([reviewedBy], map: "travel_orders_reviewedBy_fkey")

@@ -25,7 +25,8 @@ import {
 } from "lucide-react"
 
 interface LeaveApplication {
-  leave_application_id: number
+  leave_application_id?: number
+  travel_order_id?: number
   startDate: string
   endDate: string
   status: 'PENDING' | 'DEAN_APPROVED' | 'DEAN_REJECTED' | 'APPROVED' | 'DENIED'
@@ -234,7 +235,9 @@ export default function DeanApplicationDetailPage() {
     
     setIsNotifying(true)
     try {
-      const res = await fetch(`/api/dean/applications/${application.leave_application_id}/notify-rejection`, {
+      // Use the correct ID based on application type
+      const applicationId = application.travel_order_id || application.leave_application_id
+      const res = await fetch(`/api/dean/applications/${applicationId}/notify-rejection`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

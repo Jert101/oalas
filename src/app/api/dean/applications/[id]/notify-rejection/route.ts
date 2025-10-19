@@ -42,28 +42,71 @@ export async function POST(
       )
     }
 
-    const applicationId = parseInt(params.id)
+    const originalId = params.id
+    
+    // Handle different ID formats: "leave_24", "travel_5", or just "24"
+    let applicationId: number
+    let isTravelOrder = false
+    
+    if (originalId.startsWith('leave_')) {
+      applicationId = parseInt(originalId.replace('leave_', ''))
+      isTravelOrder = false
+    } else if (originalId.startsWith('travel_')) {
+      applicationId = parseInt(originalId.replace('travel_', ''))
+      isTravelOrder = true
+    } else {
+      applicationId = parseInt(originalId)
+      isTravelOrder = false
+    }
+
+    console.log('🔍 Dean Notify Rejection API - Request details:', {
+      applicationId: applicationId,
+      originalId: originalId,
+      isTravelOrder: isTravelOrder,
+      isNaN: isNaN(applicationId)
+    })
+
     if (isNaN(applicationId)) {
+      console.log('❌ Invalid application ID:', originalId)
       return NextResponse.json(
         { success: false, error: 'Invalid application ID' },
         { status: 400 }
       )
     }
 
-    // Get the application
-    const application = await prisma.leaveApplication.findUnique({
-      where: {
-        leave_application_id: applicationId
-      },
-      include: {
-        user: {
-          select: {
-            name: true,
-            email: true
+    // Get the application (either leave or travel)
+    console.log('🔍 Dean Notify Rejection API - Looking up application:', applicationId, 'Type:', isTravelOrder ? 'travel' : 'leave')
+    
+    let application
+    if (isTravelOrder) {
+      application = await prisma.travelOrder.findUnique({
+        where: {
+          travel_order_id: applicationId
+        },
+        include: {
+          user: {
+            select: {
+              name: true,
+              email: true
+            }
           }
         }
-      }
-    })
+      })
+    } else {
+      application = await prisma.leaveApplication.findUnique({
+        where: {
+          leave_application_id: applicationId
+        },
+        include: {
+          user: {
+            select: {
+              name: true,
+              email: true
+            }
+          }
+        }
+      })
+    }
 
     if (!application) {
       return NextResponse.json(
@@ -85,11 +128,12 @@ export async function POST(
 
     // Send notification and email to applicant
     try {
+      const applicationType = isTravelOrder ? 'Travel Order' : (application.leaveType?.name || 'Leave')
       await notifyFinanceRejectionToApplicant(
         application.userId, 
         applicationId, 
         rejectionReason,
-        application.leaveType?.name || 'Leave'
+        applicationType
       )
       
       console.log(`✅ Rejection notification sent to applicant: ${application.user.name}`)

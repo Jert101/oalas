@@ -26,6 +26,19 @@ export async function POST(request: NextRequest) {
       supportingDocuments
     } = body
 
+    console.log('🔍 Travel order submission data:', {
+      destination,
+      purpose,
+      dateOfTravel,
+      expectedReturn,
+      transportationFee,
+      seminarConferenceFee,
+      mealsAccommodations,
+      totalCashRequested,
+      remarks: remarks ? `Length: ${remarks.length}` : null,
+      supportingDocuments: supportingDocuments ? `Length: ${supportingDocuments.length}` : null
+    })
+
     // Get current user
     const user = await prisma.user.findUnique({
       where: { email: session.user.email }
@@ -50,7 +63,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate application (check for pending applications and date conflicts)
-    const validation = await validateNewApplication(user.users_id, new Date(dateOfTravel), new Date(expectedReturn))
+    // For travel orders, we don't pass leaveTypeId since it's not applicable
+    const validation = await validateNewApplication(user.users_id, new Date(dateOfTravel), new Date(expectedReturn), undefined)
     if (!validation.canApply) {
       return NextResponse.json({ 
         error: validation.reason,
@@ -59,6 +73,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Create travel order
+    console.log('🔍 Creating travel order with data:', {
+      users_id: user.users_id,
+      calendar_period_id: currentPeriod.calendar_period_id,
+      destination: destination,
+      purpose: purpose,
+      dateOfTravel: new Date(dateOfTravel),
+      expectedReturn: new Date(expectedReturn),
+      transportationFee: transportationFee || 0,
+      seminarConferenceFee: seminarConferenceFee || 0,
+      mealsAccommodations: mealsAccommodations || 0,
+      totalCashRequested: totalCashRequested || 0,
+      remarks: remarks || null,
+      status: 'PENDING',
+      appliedAt: new Date()
+    })
+
     const travelOrder = await prisma.travelOrder.create({
       data: {
         users_id: user.users_id,
@@ -75,6 +105,12 @@ export async function POST(request: NextRequest) {
         status: 'PENDING',
         appliedAt: new Date()
       }
+    })
+
+    console.log('✅ Travel order created successfully:', {
+      travel_order_id: travelOrder.travel_order_id,
+      status: travelOrder.status,
+      appliedAt: travelOrder.appliedAt
     })
 
     return NextResponse.json({

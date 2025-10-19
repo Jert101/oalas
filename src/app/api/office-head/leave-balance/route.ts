@@ -7,23 +7,23 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    console.log('Dean Leave balance API: Session check');
+    console.log('Office Head Leave balance API: Session check');
     console.log('Session exists:', !!session);
     console.log('Session user:', session?.user);
     console.log('Session user email:', session?.user?.email);
     
     if (!session) {
-      console.log('Dean Leave balance API: No session found - user not authenticated')
+      console.log('Office Head Leave balance API: No session found - user not authenticated')
       return NextResponse.json({ error: "Not authenticated - please log in" }, { status: 401 })
     }
     
     if (!session.user) {
-      console.log('Dean Leave balance API: Session exists but no user data')
+      console.log('Office Head Leave balance API: Session exists but no user data')
       return NextResponse.json({ error: "Invalid session - please log in again" }, { status: 401 })
     }
     
     if (!session.user.email) {
-      console.log('Dean Leave balance API: Session user exists but no email')
+      console.log('Office Head Leave balance API: Session user exists but no email')
       return NextResponse.json({ error: "Invalid user data - please log in again" }, { status: 401 })
     }
 
@@ -31,10 +31,10 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const leaveTypeId = searchParams.get('leaveTypeId')
 
-    console.log(`Dean Leave balance API: Request for leaveTypeId: ${leaveTypeId}`)
+    console.log(`Office Head Leave balance API: Request for leaveTypeId: ${leaveTypeId}`)
 
     if (!leaveTypeId) {
-      console.log('Dean Leave balance API: Missing leaveTypeId parameter')
+      console.log('Office Head Leave balance API: Missing leaveTypeId parameter')
       return NextResponse.json({ error: "Leave type ID is required" }, { status: 400 })
     }
 
@@ -44,32 +44,43 @@ export async function GET(request: NextRequest) {
       include: { role: true }
     })
 
-    console.log('Dean Leave balance API: User lookup result:', !!user);
+    console.log('Office Head Leave balance API: User lookup result:', !!user);
     if (user) {
-      console.log('Dean Leave balance API: User details:', {
+      console.log('Office Head Leave balance API: User details:', {
         name: user.name,
         users_id: user.users_id,
         email: user.email,
         role: user.role?.name,
-        status_id: user.status_id
+        status_id: user.status_id,
+        department_id: user.department_id
       });
     }
 
     if (!user) {
-      console.log(`Dean Leave balance API: User not found for email: ${session.user.email}`)
+      console.log(`Office Head Leave balance API: User not found for email: ${session.user.email}`)
       return NextResponse.json({ 
         error: "User not found", 
         details: `No user found with email: ${session.user.email}` 
       }, { status: 404 })
     }
 
-    // Verify user is a Dean/Program Head
-    if (user.role?.name !== "Dean/Program Head") {
-      console.log(`Dean Leave balance API: User ${user.name} is not a Dean/Program Head`)
-      return NextResponse.json({ error: "Access denied. Dean/Program Head role required." }, { status: 403 })
+    // Verify user is an Office Head (Department Head or has isDepartmentHead flag)
+    const allowedRoles = ["Department Head", "Admin"]
+    const isOfficeHead = user.role && allowedRoles.includes(user.role.name)
+    const hasDepartmentHeadFlag = (user as any).isDepartmentHead === true
+    
+    if (!isOfficeHead && !hasDepartmentHeadFlag) {
+      console.log(`Office Head Leave balance API: User ${user.name} is not authorized. Role: ${user.role?.name}, isDepartmentHead: ${hasDepartmentHeadFlag}`)
+      return NextResponse.json({ error: "Access denied. Office Head role required." }, { status: 403 })
     }
 
-    console.log(`Dean Leave balance API: Found dean: ${user.name} (${user.users_id})`)
+    // Ensure user has a department
+    if (!user.department_id) {
+      console.log(`Office Head Leave balance API: User ${user.name} has no department assigned`)
+      return NextResponse.json({ error: "No department assigned. Please contact administrator." }, { status: 400 })
+    }
+
+    console.log(`Office Head Leave balance API: Found office head: ${user.name} (${user.users_id}) in department: ${user.department_id}`)
 
     // Get current calendar period
     const currentPeriod = await prisma.calendarPeriod.findFirst({
@@ -77,11 +88,11 @@ export async function GET(request: NextRequest) {
     })
 
     if (!currentPeriod) {
-      console.log('Dean Leave balance API: No current calendar period found')
+      console.log('Office Head Leave balance API: No current calendar period found')
       return NextResponse.json({ error: "No current calendar period found" }, { status: 404 })
     }
 
-    console.log(`Dean Leave balance API: Current period: ${currentPeriod.academicYear} (ID: ${currentPeriod.calendar_period_id})`)
+    console.log(`Office Head Leave balance API: Current period: ${currentPeriod.academicYear} (ID: ${currentPeriod.calendar_period_id})`)
 
     // Get leave balance for the current period and leave type
     const leaveBalance = await prisma.leaveBalance.findFirst({
@@ -92,9 +103,9 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    console.log('Dean Leave balance API: Balance lookup result:', !!leaveBalance);
+    console.log('Office Head Leave balance API: Balance lookup result:', !!leaveBalance);
     if (leaveBalance) {
-      console.log('Dean Leave balance API: Balance details:', {
+      console.log('Office Head Leave balance API: Balance details:', {
         allowedDays: leaveBalance.allowedDays,
         usedDays: leaveBalance.usedDays,
         remainingDays: leaveBalance.remainingDays,
@@ -103,14 +114,14 @@ export async function GET(request: NextRequest) {
     }
 
     if (!leaveBalance) {
-      console.log(`Dean Leave balance API: No leave balance found for dean ${user.users_id}, period ${currentPeriod.calendar_period_id}, leave type ${leaveTypeId}`)
+      console.log(`Office Head Leave balance API: No leave balance found for office head ${user.users_id}, period ${currentPeriod.calendar_period_id}, leave type ${leaveTypeId}`)
       
       // Provide more detailed error information
       const userBalances = await prisma.leaveBalance.findMany({
         where: { users_id: user.users_id }
       });
       
-      console.log(`Dean has ${userBalances.length} total leave balances`);
+      console.log(`Office Head has ${userBalances.length} total leave balances`);
       
       return NextResponse.json({ 
         error: "Leave balance not found",
@@ -123,7 +134,7 @@ export async function GET(request: NextRequest) {
       }, { status: 404 })
     }
 
-    console.log(`Dean Leave balance API: Found balance - allowed: ${leaveBalance.allowedDays}, used: ${leaveBalance.usedDays}, remaining: ${leaveBalance.remainingDays}`)
+    console.log(`Office Head Leave balance API: Found balance - allowed: ${leaveBalance.allowedDays}, used: ${leaveBalance.usedDays}, remaining: ${leaveBalance.remainingDays}`)
 
     // Get the leave type name separately
     const leaveType = await prisma.leave_types.findUnique({
@@ -141,11 +152,11 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    console.log('Dean Leave balance API: Returning response:', response)
+    console.log('Office Head Leave balance API: Returning response:', response)
     return NextResponse.json(response)
 
   } catch (error) {
-    console.error('Dean Leave balance API: Error fetching leave balance:', error)
+    console.error('Office Head Leave balance API: Error fetching leave balance:', error)
     return NextResponse.json(
       { error: "Internal server error", details: error.message },
       { status: 500 }

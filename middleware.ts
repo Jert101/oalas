@@ -59,6 +59,16 @@ export default withAuth(
       if (token?.role === 'Teacher/Instructor' || token?.role === 'Teacher') {
         return NextResponse.redirect(new URL('/teacher/dashboard', req.url))
       }
+      
+      // Non-teaching staff routing
+      const nonTeachingRoles = ['Non Teaching Personnel', 'Office Clerk', 'Administrative Assistant', 'Library Staff', 'IT Support', 'Security Office', 'Clinic Staff', 'Accounting Office']
+      if (nonTeachingRoles.includes(token?.role || '')) {
+        console.log("[Middleware] 🏢 Non-teaching staff detected - redirecting to non-teaching dashboard:", {
+          role: token?.role,
+          redirectingTo: '/non-teaching-staff/dashboard'
+        })
+        return NextResponse.redirect(new URL('/non-teaching-staff/dashboard', req.url))
+      }
       if (token?.role === 'Dean/Program Head' || token?.role === 'Department Head') {
         return NextResponse.redirect(new URL('/dean/dashboard', req.url))
       }
@@ -185,6 +195,23 @@ export default withAuth(
           return NextResponse.redirect(new URL('/dean/dashboard', req.url))
         } else if (token?.role === 'Admin') {
           return NextResponse.redirect(new URL('/admin/dashboard', req.url))
+        }
+      }
+    }
+
+    // Non-teaching staff routes
+    if (pathname.startsWith('/non-teaching-staff')) {
+      const nonTeachingRoles = ['Non Teaching Personnel', 'Office Clerk', 'Administrative Assistant', 'Library Staff', 'IT Support', 'Security Office', 'Clinic Staff', 'Accounting Office']
+      if (!nonTeachingRoles.includes(token?.role || '') && token?.role !== 'Admin') {
+        // Redirect to their appropriate dashboard
+        if (token?.role === 'Finance Department') {
+          return NextResponse.redirect(new URL('/finance/dashboard', req.url))
+        } else if (token?.role === 'Dean/Program Head') {
+          return NextResponse.redirect(new URL('/dean/dashboard', req.url))
+        } else if (token?.role === 'Admin') {
+          return NextResponse.redirect(new URL('/admin/dashboard', req.url))
+        } else if (token?.role === 'Teacher/Instructor') {
+          return NextResponse.redirect(new URL('/teacher/dashboard', req.url))
         }
       }
     }

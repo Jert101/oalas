@@ -51,6 +51,14 @@ export default function DashboardPage() {
       return
     }
 
+    // Non-teaching staff routing
+    const nonTeachingRoles = ['Non Teaching Personnel', 'Office Clerk', 'Administrative Assistant', 'Library Staff', 'IT Support', 'Security Office', 'Clinic Staff', 'Accounting Office']
+    if (nonTeachingRoles.includes(userRole || '')) {
+      console.log("[Dashboard] 🏢 Non-teaching staff detected, redirecting to non-teaching dashboard")
+      router.push('/non-teaching-staff/dashboard')
+      return
+    }
+
     // Office head check (PRIORITY: check isDepartmentHead FIRST before specific role names)
     if (isDepartmentHead) {
       console.log("[Dashboard] ✅ Office head detected, redirecting to office-head dashboard")

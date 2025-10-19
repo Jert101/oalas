@@ -3,7 +3,7 @@
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import { AppSidebar } from "@/components/app-sidebar"
+import { NonTeachingStaffSidebar } from "@/components/non-teaching-staff-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import {
   SidebarInset,
@@ -73,7 +73,7 @@ export default function NonTeachingStaffLayout({
         } as React.CSSProperties
       }
     >
-      <AppSidebar />
+      <NonTeachingStaffSidebar />
       <SidebarInset>
         <SiteHeader />
         <div className="flex flex-1 flex-col">

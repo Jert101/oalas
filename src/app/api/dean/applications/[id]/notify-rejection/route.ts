@@ -35,9 +35,12 @@ export async function POST(
 
     // Verify user is a Dean/Program Head or Department Head
     const allowedRoles = ["Dean/Program Head", "Department Head"]
-    if (!allowedRoles.includes(user.role?.name || "")) {
+    const isAllowed = user.role?.name && allowedRoles.includes(user.role.name)
+    const isDepartmentHead = user.isDepartmentHead === true
+    
+    if (!isAllowed && !isDepartmentHead) {
       return NextResponse.json(
-        { success: false, error: 'Access denied' },
+        { success: false, error: 'Access denied. Dean/Program Head or Department Head role required.' },
         { status: 403 }
       )
     }

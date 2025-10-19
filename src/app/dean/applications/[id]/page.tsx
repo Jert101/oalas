@@ -166,8 +166,10 @@ export default function DeanApplicationDetailPage() {
     
     setIsApproving(true)
     try {
-      // Use the correct ID based on application type
-      const applicationId = application.travel_order_id || application.leave_application_id
+      // Use the correct formatted ID based on application type
+      const applicationId = application.travel_order_id 
+        ? `travel_${application.travel_order_id}` 
+        : `leave_${application.leave_application_id}`
       const res = await fetch(`/api/dean/applications/${applicationId}/approve`, {
         method: 'POST',
         headers: {
@@ -200,8 +202,10 @@ export default function DeanApplicationDetailPage() {
     
     setIsRejecting(true)
     try {
-      // Use the correct ID based on application type
-      const applicationId = application.travel_order_id || application.leave_application_id
+      // Use the correct formatted ID based on application type
+      const applicationId = application.travel_order_id 
+        ? `travel_${application.travel_order_id}` 
+        : `leave_${application.leave_application_id}`
       const res = await fetch(`/api/dean/applications/${applicationId}/reject`, {
         method: 'POST',
         headers: {
@@ -244,8 +248,10 @@ export default function DeanApplicationDetailPage() {
     
     setIsNotifying(true)
     try {
-      // Use the correct ID based on application type
-      const applicationId = application.travel_order_id || application.leave_application_id
+      // Use the correct formatted ID based on application type
+      const applicationId = application.travel_order_id 
+        ? `travel_${application.travel_order_id}` 
+        : `leave_${application.leave_application_id}`
       const res = await fetch(`/api/dean/applications/${applicationId}/notify-rejection`, {
         method: 'POST',
         headers: {

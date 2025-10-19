@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { notifyFinanceRejectionToApplicant } from '@/lib/notification-service'
-import { emailService } from '@/lib/email-service'
 
 export async function POST(
   request: NextRequest,
@@ -86,15 +85,11 @@ export async function POST(
 
     // Send notification and email to applicant
     try {
-      // Send in-app notification
-      await notifyFinanceRejectionToApplicant(application.userId, applicationId, rejectionReason)
-      
-      // Send email notification
-      await emailService.sendFinanceRejectionEmail(
-        application.user.email,
-        application.user.name,
-        applicationId,
-        rejectionReason
+      await notifyFinanceRejectionToApplicant(
+        application.userId, 
+        applicationId, 
+        rejectionReason,
+        application.leaveType?.name || 'Leave'
       )
       
       console.log(`✅ Rejection notification sent to applicant: ${application.user.name}`)

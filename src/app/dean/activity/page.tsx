@@ -46,9 +46,10 @@ export default function DeanActivityPage() {
   const fetchActivityData = async () => {
     try {
       // Fetch recent applications and generate activity feed
-      const res = await fetch('/api/dean/leave-applications')
+      const res = await fetch('/api/dean/applications')
       if (res.ok) {
         const data = await res.json()
+        console.log('Activity API Response:', data) // Debug log
         const applications = data.data?.applications || []
         
         // Generate activity items from applications
@@ -61,15 +62,18 @@ export default function DeanActivityPage() {
         
         setStats({
           todayApplications: applications.filter((app: any) => 
-            new Date(app.created_at || app.start_date) >= today.setHours(0,0,0,0)
+            new Date(app.appliedAt || app.startDate) >= today.setHours(0,0,0,0)
           ).length,
           thisWeekApplications: applications.filter((app: any) => 
-            new Date(app.created_at || app.start_date) >= weekAgo
+            new Date(app.appliedAt || app.startDate) >= weekAgo
           ).length,
           pendingCount: applications.filter((app: any) => app.status === 'Pending').length,
           approvedCount: applications.filter((app: any) => app.status === 'Approved').length,
           rejectedCount: applications.filter((app: any) => app.status === 'Rejected').length
         })
+      } else {
+        console.error('Activity API Error:', res.status, res.statusText)
+        toast.error('Failed to load activity data')
       }
     } catch (error) {
       console.error('Error fetching activity data:', error)
@@ -88,11 +92,11 @@ export default function DeanActivityPage() {
         id: `${app.id}-submission`,
         type: 'application',
         title: 'Leave Application Submitted',
-        description: `${app.user.name} submitted a ${app.leave_type.name} application`,
+        description: `${app.user.name} submitted a ${app.leaveType.name} application`,
         user: app.user.name,
-        timestamp: app.created_at || app.start_date,
+        timestamp: app.appliedAt || app.startDate,
         status: app.status,
-        metadata: { applicationId: app.id, leaveType: app.leave_type.name }
+        metadata: { applicationId: app.id, leaveType: app.leaveType.name }
       })
 
       // Add status-specific activities
@@ -101,22 +105,22 @@ export default function DeanActivityPage() {
           id: `${app.id}-approved`,
           type: 'approval',
           title: 'Leave Application Approved',
-          description: `${app.user.name}'s ${app.leave_type.name} application was approved`,
+          description: `${app.user.name}'s ${app.leaveType.name} application was approved`,
           user: 'Dean/Program Head',
-          timestamp: app.updated_at || app.start_date,
+          timestamp: app.appliedAt || app.startDate,
           status: 'Approved',
-          metadata: { applicationId: app.id, leaveType: app.leave_type.name }
+          metadata: { applicationId: app.id, leaveType: app.leaveType.name }
         })
       } else if (app.status === 'Rejected') {
         activities.push({
           id: `${app.id}-rejected`,
           type: 'rejection',
           title: 'Leave Application Rejected',
-          description: `${app.user.name}'s ${app.leave_type.name} application was rejected`,
+          description: `${app.user.name}'s ${app.leaveType.name} application was rejected`,
           user: 'Dean/Program Head',
-          timestamp: app.updated_at || app.start_date,
+          timestamp: app.appliedAt || app.startDate,
           status: 'Rejected',
-          metadata: { applicationId: app.id, leaveType: app.leave_type.name }
+          metadata: { applicationId: app.id, leaveType: app.leaveType.name }
         })
       }
     })

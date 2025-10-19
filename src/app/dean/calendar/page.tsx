@@ -14,13 +14,14 @@ interface LeaveApplication {
     name: string
     email: string
   }
-  leave_type: {
+  leaveType: {
     name: string
   }
-  start_date: string
-  end_date: string
+  startDate: string
+  endDate: string
   status: string
   reason: string
+  appliedAt: string
 }
 
 interface CalendarEvent {
@@ -44,10 +45,14 @@ export default function DeanCalendarPage() {
 
   const fetchLeaveApplications = async () => {
     try {
-      const res = await fetch('/api/dean/leave-applications')
+      const res = await fetch('/api/dean/applications')
       if (res.ok) {
         const data = await res.json()
+        console.log('API Response:', data) // Debug log
         setLeaveApplications(data.data?.applications || [])
+      } else {
+        console.error('API Error:', res.status, res.statusText)
+        toast.error('Failed to load leave applications')
       }
     } catch (error) {
       console.error('Error fetching leave applications:', error)
@@ -89,10 +94,10 @@ export default function DeanCalendarPage() {
     
     return leaveApplications
       .filter(app => {
-        const startDate = new Date(app.start_date)
+        const startDate = new Date(app.startDate)
         return startDate >= today && startDate <= nextMonth && app.status === 'Approved'
       })
-      .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
+      .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
       .slice(0, 10)
   }
 
@@ -185,9 +190,9 @@ export default function DeanCalendarPage() {
                   <div key={leave.id} className="flex items-center justify-between p-3 border rounded-lg">
                     <div className="flex-1">
                       <p className="font-medium">{leave.user.name}</p>
-                      <p className="text-sm text-muted-foreground">{leave.leave_type.name}</p>
+                      <p className="text-sm text-muted-foreground">{leave.leaveType.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        {formatDate(leave.start_date)} - {formatDate(leave.end_date)}
+                        {formatDate(leave.startDate)} - {formatDate(leave.endDate)}
                       </p>
                     </div>
                     <div className="text-right">
@@ -198,7 +203,7 @@ export default function DeanCalendarPage() {
                         </div>
                       </Badge>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {getDaysUntilLeave(leave.start_date)} days
+                        {getDaysUntilLeave(leave.startDate)} days
                       </p>
                     </div>
                   </div>
@@ -236,9 +241,9 @@ export default function DeanCalendarPage() {
                   <div key={application.id} className="flex items-center justify-between p-3 border rounded-lg">
                     <div className="flex-1">
                       <p className="font-medium">{application.user.name}</p>
-                      <p className="text-sm text-muted-foreground">{application.leave_type.name}</p>
+                      <p className="text-sm text-muted-foreground">{application.leaveType.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        {formatDate(application.start_date)} - {formatDate(application.end_date)}
+                        {formatDate(application.startDate)} - {formatDate(application.endDate)}
                       </p>
                     </div>
                     <Badge className={getStatusColor(application.status)}>

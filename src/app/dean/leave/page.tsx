@@ -378,7 +378,7 @@ export default function DeanLeavePage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => router.push(`/dean/leave/${application.id}`)}
+                      onClick={() => router.push(`/dean/applications/${application.id}`)}
                       className="w-full sm:w-auto"
                     >
                       View Details

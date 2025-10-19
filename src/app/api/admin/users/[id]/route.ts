@@ -152,7 +152,7 @@ export async function DELETE(
       // Delete notifications
       if (relatedRecords?.notifications && relatedRecords.notifications.length > 0) {
         await tx.notification.deleteMany({
-          where: { users_id: userId }
+          where: { userId: userId }
         })
       }
 

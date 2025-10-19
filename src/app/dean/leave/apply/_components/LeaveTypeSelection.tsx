@@ -55,16 +55,22 @@ export function LeaveTypeSelection({ onSelect, onBack, isLoading }: LeaveTypeSel
   const fetchLeaveTypes = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/leave-types', { cache: 'no-store' })
+      console.log('Fetching dean leave types...')
+      const response = await fetch('/api/dean/leave-types', { cache: 'no-store' })
+      console.log('Dean leave types response status:', response.status)
+      
       if (response.ok) {
         const data = await response.json()
+        console.log('Dean leave types data:', data)
         // Display all leave types returned by the API (no filtering)
         setLeaveTypes(Array.isArray(data) ? data : (data.leave_types || []))
       } else {
+        const errorData = await response.json()
+        console.error('Dean leave types API error:', errorData)
         toast.error('Failed to load leave types')
       }
     } catch (error) {
-      console.error('Error fetching leave types:', error)
+      console.error('Error fetching dean leave types:', error)
       toast.error('Failed to load leave types')
     } finally {
       setLoading(false)

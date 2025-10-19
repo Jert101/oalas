@@ -17,64 +17,143 @@ export async function GET(
       )
     }
 
-    const applicationId = parseInt(params.id)
+    // Handle different ID formats: "leave_24", "travel_5", or just "24"
+    const originalId = params.id
+    let applicationId: number
+    let isTravelOrder = false
+    
+    if (originalId.startsWith('leave_')) {
+      applicationId = parseInt(originalId.replace('leave_', ''))
+      isTravelOrder = false
+    } else if (originalId.startsWith('travel_')) {
+      applicationId = parseInt(originalId.replace('travel_', ''))
+      isTravelOrder = true
+    } else {
+      applicationId = parseInt(originalId)
+      isTravelOrder = false
+    }
+
+    console.log('🔍 Finance Application Detail API - Request details:', {
+      applicationId: applicationId,
+      originalId: originalId,
+      isTravelOrder: isTravelOrder,
+      isNaN: isNaN(applicationId)
+    })
+
     if (isNaN(applicationId)) {
+      console.log('❌ Invalid application ID:', originalId)
       return NextResponse.json(
         { success: false, error: 'Invalid application ID' },
         { status: 400 }
       )
     }
 
-    // Get the application (finance can see any application)
-    const application = await prisma.leaveApplication.findUnique({
-      where: {
-        leave_application_id: applicationId
-      },
-      include: {
-        user: {
-          select: {
-            name: true,
-            email: true,
-            profilePicture: true,
-            department: {
-              select: {
-                name: true
+    // Get the application (either leave or travel - finance can see any application)
+    console.log('🔍 Finance Application Detail API - Looking up application:', applicationId, 'Type:', isTravelOrder ? 'travel' : 'leave')
+    
+    let application
+    if (isTravelOrder) {
+      application = await prisma.travelOrder.findUnique({
+        where: {
+          travel_order_id: applicationId
+        },
+        include: {
+          user: {
+            select: {
+              name: true,
+              email: true,
+              profilePicture: true,
+              department: {
+                select: {
+                  name: true
+                }
               }
             }
-          }
-        },
-        reviewer: {
-          select: {
-            name: true,
-            email: true
-          }
-        },
-        calendarPeriod: {
-          select: {
-            academicYear: true,
-            startDate: true,
-            endDate: true
-          }
-        },
-        leaveType: {
-          select: {
-            leave_type_id: true,
-            name: true,
-            description: true
+          },
+          reviewer: {
+            select: {
+              name: true,
+              email: true
+            }
+          },
+          calendarPeriod: {
+            select: {
+              academicYear: true,
+              startDate: true,
+              endDate: true
+            }
           }
         }
-      }
-    })
+      })
+    } else {
+      application = await prisma.leaveApplication.findUnique({
+        where: {
+          leave_application_id: applicationId
+        },
+        include: {
+          user: {
+            select: {
+              name: true,
+              email: true,
+              profilePicture: true,
+              department: {
+                select: {
+                  name: true
+                }
+              }
+            }
+          },
+          reviewer: {
+            select: {
+              name: true,
+              email: true
+            }
+          },
+          calendarPeriod: {
+            select: {
+              academicYear: true,
+              startDate: true,
+              endDate: true
+            }
+          },
+          leaveType: {
+            select: {
+              leave_type_id: true,
+              name: true,
+              description: true
+            }
+          }
+        }
+      })
+    }
+
+    console.log('🔍 Finance Application Detail API - Application found:', !!application)
+    if (application) {
+      const appId = isTravelOrder ? application.travel_order_id : application.leave_application_id
+      console.log('🔍 Finance Application Detail API - Application details:', {
+        id: appId,
+        type: isTravelOrder ? 'travel' : 'leave',
+        applicantName: application.user.name,
+        applicantEmail: application.user.email,
+        applicantDeptName: application.user.department?.name
+      })
+    }
 
     if (!application) {
+      console.log('❌ Finance Application Detail API - Application not found')
       return NextResponse.json(
         { success: false, error: 'Application not found' },
         { status: 404 }
       )
     }
 
-    // Add leave type information to application (already included in the query)
-    const applicationWithLeaveType = application
+    // For travel orders, leaveType is null; for leave applications, it's already included
+    const applicationWithLeaveType = {
+      ...application,
+      leaveType: isTravelOrder ? null : application.leaveType
+    }
+
+    console.log('✅ Finance Application Detail API - Successfully returning application')
 
     return NextResponse.json({
       success: true,

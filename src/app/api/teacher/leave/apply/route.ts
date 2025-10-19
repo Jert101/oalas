@@ -26,6 +26,18 @@ export async function POST(request: NextRequest) {
       medicalProof
     } = body
 
+    console.log('🔍 Leave application submission data:', {
+      leaveTypeId,
+      startDate,
+      endDate,
+      numberOfDays,
+      hours,
+      paymentStatus,
+      specificPurpose: specificPurpose ? `Length: ${specificPurpose.length}` : null,
+      descriptionOfSickness: descriptionOfSickness ? `Length: ${descriptionOfSickness.length}` : null,
+      medicalProof: medicalProof ? `Length: ${medicalProof.length}, Type: ${typeof medicalProof}` : null
+    })
+
     // Get current user
     const user = await prisma.user.findUnique({
       where: { email: session.user.email }
@@ -59,6 +71,23 @@ export async function POST(request: NextRequest) {
     }
 
     // Create leave application
+    console.log('🔍 Creating leave application with data:', {
+      users_id: user.users_id,
+      calendar_period_id: currentPeriod.calendar_period_id,
+      leave_type_id: leaveTypeId,
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
+      reason: specificPurpose || descriptionOfSickness || "Leave application",
+      status: 'PENDING',
+      appliedAt: new Date(),
+      paymentStatus: paymentStatus || 'PAID',
+      numberOfDays: numberOfDays,
+      hours: hours,
+      specificPurpose: specificPurpose || null,
+      descriptionOfSickness: descriptionOfSickness || null,
+      medicalProof: medicalProof || null
+    })
+
     const leaveApplication = await prisma.leaveApplication.create({
       data: {
         users_id: user.users_id,

@@ -248,19 +248,34 @@ export default function LeaveApplicationPage() {
   }) => {
     setIsLoading(true)
     try {
-      // Convert file to base64 if a File object was provided
-      let medicalProofBase64: string | undefined = undefined
+      console.log('🔍 Form submission data:', {
+        ...formData,
+        medicalProof: formData.medicalProof instanceof File ? 
+          `File: ${formData.medicalProof.name} (${formData.medicalProof.size} bytes)` : 
+          formData.medicalProof
+      })
+
+      // Handle file upload separately if it's a File object
+      let medicalProofPath: string | undefined = undefined
       if (formData.medicalProof instanceof File) {
-        const file = formData.medicalProof
-        const reader = new FileReader()
-        const base64Promise = new Promise<string>((resolve, reject) => {
-          reader.onload = () => resolve(reader.result as string)
-          reader.onerror = () => reject(reader.error)
+        // Upload file first
+        const uploadFormData = new FormData()
+        uploadFormData.append('file', formData.medicalProof)
+        
+        const uploadResponse = await fetch('/api/upload/medical-proof', {
+          method: 'POST',
+          body: uploadFormData,
         })
-        reader.readAsDataURL(file)
-        medicalProofBase64 = await base64Promise
+        
+        if (uploadResponse.ok) {
+          const uploadResult = await uploadResponse.json()
+          medicalProofPath = uploadResult.filePath
+          console.log('✅ File uploaded successfully:', medicalProofPath)
+        } else {
+          throw new Error('Failed to upload medical proof file')
+        }
       } else if (typeof formData.medicalProof === 'string') {
-        medicalProofBase64 = formData.medicalProof
+        medicalProofPath = formData.medicalProof
       }
 
       const response = await fetch('/api/teacher/leave/apply', {
@@ -270,7 +285,7 @@ export default function LeaveApplicationPage() {
         },
         body: JSON.stringify({
           ...formData,
-          medicalProof: medicalProofBase64,
+          medicalProof: medicalProofPath,
           leaveTypeId: selectedLeaveType?.leave_type_id,
         }),
       })

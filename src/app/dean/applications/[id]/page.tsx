@@ -294,6 +294,8 @@ export default function DeanApplicationDetailPage() {
   const handleDownloadFile = (filePath: string, defaultName = 'medical-proof') => {
     try {
       const fileName = inferFileName(filePath) || defaultName
+      console.log('🔍 Download request:', { filePath, fileName })
+      
       // Check if it's a base64 data URL
       if (filePath.startsWith('data:')) {
         // Convert base64 to blob
@@ -314,12 +316,38 @@ export default function DeanApplicationDetailPage() {
             alert('Failed to download file')
           })
       } else {
-        const link = document.createElement('a')
-        link.href = filePath
-        link.download = fileName
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
+        // Extract filename from path for API endpoint
+        const filename = filePath.split('/').pop()
+        if (filename) {
+          // Use our secure file serving endpoint
+          const downloadUrl = `/api/files/medical-proof/${filename}`
+          console.log('📥 Downloading via API:', downloadUrl)
+          
+          fetch(downloadUrl)
+            .then(response => {
+              if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`)
+              }
+              return response.blob()
+            })
+            .then(blob => {
+              const blobUrl = URL.createObjectURL(blob)
+              const link = document.createElement('a')
+              link.href = blobUrl
+              link.download = fileName
+              document.body.appendChild(link)
+              link.click()
+              document.body.removeChild(link)
+              setTimeout(() => URL.revokeObjectURL(blobUrl), 100)
+            })
+            .catch(error => {
+              console.error('Error downloading file:', error)
+              alert('Failed to download file')
+            })
+        } else {
+          console.error('Could not extract filename from path:', filePath)
+          alert('Invalid file path')
+        }
       }
     } catch (error) {
       console.error('Error in handleDownloadFile:', error)
@@ -630,20 +658,41 @@ export default function DeanApplicationDetailPage() {
                   return !isPdf && isImage
                 })() && (
                   <div className="mt-3">
-                    <img 
-                      src={application.medicalProof} 
-                      alt="Medical Proof" 
-                      className="max-w-full max-h-48 object-contain rounded border"
-                      onError={(e) => {
-                        console.error('Medical proof image failed to load:', application.medicalProof)
-                        const target = e.target as HTMLImageElement
-                        target.style.display = 'none'
-                        const errorDiv = document.createElement('div')
-                        errorDiv.className = 'text-red-500 text-sm mt-2'
-                        errorDiv.textContent = 'Image failed to load. Please try downloading the file instead.'
-                        target.parentNode?.appendChild(errorDiv)
-                      }}
-                    />
+                    {(() => {
+                      const mp = application.medicalProof!
+                      // Check if it's a data URL (base64) or a file path
+                      const imageSrc = mp.startsWith('data:') 
+                        ? mp 
+                        : `/api/files/medical-proof/${mp.split('/').pop()}`
+                      
+                      console.log('🖼️ Image source:', { original: mp, processed: imageSrc })
+                      
+                      return (
+                        <img 
+                          src={imageSrc} 
+                          alt="Medical Proof" 
+                          className="max-w-full max-h-48 object-contain rounded border"
+                          onLoad={() => console.log('✅ Image loaded successfully:', imageSrc)}
+                          onError={(e) => {
+                            console.error('❌ Medical proof image failed to load:', {
+                              originalPath: mp,
+                              processedSrc: imageSrc,
+                              error: e
+                            })
+                            const target = e.target as HTMLImageElement
+                            target.style.display = 'none'
+                            const errorDiv = document.createElement('div')
+                            errorDiv.className = 'text-red-500 text-sm mt-2 p-2 bg-red-50 rounded border'
+                            errorDiv.innerHTML = `
+                              <strong>Image failed to load</strong><br/>
+                              <small>Path: ${mp}</small><br/>
+                              <small>Please try downloading the file instead.</small>
+                            `
+                            target.parentNode?.appendChild(errorDiv)
+                          }}
+                        />
+                      )
+                    })()}
                   </div>
                 )}
               </div>

@@ -21,7 +21,13 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
     const leaveTypeId = searchParams.get('leaveTypeId')
-    console.log('Query params - startDate:', startDate, 'endDate:', endDate, 'leaveTypeId:', leaveTypeId)
+    console.log('🔍 Teacher validation API called with:', {
+      startDate,
+      endDate,
+      leaveTypeId,
+      leaveTypeIdType: typeof leaveTypeId,
+      allParams: Object.fromEntries(searchParams.entries())
+    })
 
     // Get current user
     const user = await prisma.user.findUnique({
@@ -53,13 +59,16 @@ export async function GET(request: NextRequest) {
     // If dates are provided, check for date conflicts
     if (startDate && endDate) {
       console.log('🔍 Checking date conflicts...')
+      const parsedLeaveTypeId = leaveTypeId ? parseInt(leaveTypeId) : undefined
+      console.log('🔍 Parsed leaveTypeId:', parsedLeaveTypeId, 'Type:', typeof parsedLeaveTypeId)
+      
       const dateCheck = await checkDateConflicts(
         user.users_id,
         new Date(startDate),
         new Date(endDate),
-        leaveTypeId ? parseInt(leaveTypeId) : undefined
+        parsedLeaveTypeId
       )
-      console.log('Date check result:', dateCheck)
+      console.log('📋 Date check result:', dateCheck)
       return NextResponse.json(dateCheck)
     }
 

@@ -116,19 +116,36 @@ export async function checkDateConflicts(
   leaveTypeId?: number
 ): Promise<ValidationResult> {
   try {
+    console.log('🔍 checkDateConflicts called with:', {
+      userId,
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      leaveTypeId,
+      leaveTypeIdType: typeof leaveTypeId
+    })
+    
     // Check if the leave type is exempt from date restrictions
     if (leaveTypeId) {
+      console.log('🔍 Checking exemption for leaveTypeId:', leaveTypeId)
+      
       const leaveType = await prisma.leave_types.findUnique({
         where: { leave_type_id: leaveTypeId },
         select: { exempt_from_date_restriction: true }
       })
       
+      console.log('🔍 Leave type query result:', leaveType)
+      
       if (leaveType?.exempt_from_date_restriction) {
+        console.log('✅ Leave type is exempt - returning canApply: true')
         return {
           canApply: true,
           reason: "Leave type is exempt from date restrictions"
         }
+      } else {
+        console.log('❌ Leave type is NOT exempt - proceeding with date conflict check')
       }
+    } else {
+      console.log('⚠️ No leaveTypeId provided - proceeding with date conflict check')
     }
 
     // Check for overlapping approved leave applications
@@ -196,6 +213,22 @@ export async function checkDateConflicts(
       }
     })
 
+    // Double-check: If leave type is exempt, ignore all conflicts
+    if (leaveTypeId) {
+      const leaveType = await prisma.leave_types.findUnique({
+        where: { leave_type_id: leaveTypeId },
+        select: { exempt_from_date_restriction: true, name: true }
+      })
+      
+      if (leaveType?.exempt_from_date_restriction) {
+        console.log('✅ FINAL CHECK: Leave type', leaveType.name, 'is exempt - allowing application')
+        return {
+          canApply: true,
+          reason: `${leaveType.name} is exempt from date restrictions`
+        }
+      }
+    }
+    
     const hasConflicts = conflictingLeaveApplications.length > 0 || conflictingTravelOrders.length > 0
 
     if (hasConflicts) {
@@ -206,6 +239,11 @@ export async function checkDateConflicts(
       })
       
       const leaveTypeMap = new Map(leaveTypes.map(lt => [lt.leave_type_id, lt.name]))
+      
+      console.log('❌ Date conflicts found:', {
+        leaveConflicts: conflictingLeaveApplications.length,
+        travelConflicts: conflictingTravelOrders.length
+      })
       
       return {
         canApply: false,

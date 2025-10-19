@@ -454,15 +454,26 @@ export default function DeanCurrentApplicationPage() {
 													</div>
 													{!application.medicalProof.endsWith('.pdf') && (
 														<div className="mt-3">
-															<img 
-																src={application.medicalProof} 
-																alt="Medical Proof" 
-																className="max-w-full max-h-32 object-contain rounded border"
-																onError={(e) => {
-																	const target = e.target as HTMLImageElement
-																	target.style.display = 'none'
-																}}
-															/>
+															{(() => {
+																const mp = application.medicalProof
+																const imageSrc = mp.startsWith('data:') 
+																	? mp 
+																	: `/api/files/medical-proof/${mp.split('/').pop()}`
+																
+																return (
+																	<img 
+																		src={imageSrc} 
+																		alt="Medical Proof" 
+																		className="max-w-full max-h-32 object-contain rounded border"
+																		onLoad={() => console.log('✅ Image loaded successfully:', imageSrc)}
+																		onError={(e) => {
+																			console.error('❌ Medical proof image failed to load:', imageSrc)
+																			const target = e.target as HTMLImageElement
+																			target.style.display = 'none'
+																		}}
+																	/>
+																)
+															})()}
 														</div>
 													)}
 												</div>

@@ -24,9 +24,9 @@ export async function GET(req: NextRequest) {
     }
 
     // Get the user's data (dean, department head, or office head)
-    const currentUser = await prisma.user.findFirst({
+    const currentUser = await prisma.user.findUnique({
       where: { 
-        users_id: session.user.id
+        email: session.user.email
       },
       include: {
         department: true,
@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
     }
     
 
-    // Fetch dean-specific statistics
+    // Fetch office head-specific statistics (department-filtered)
     const [
       pendingApplications,
       approvedApplications,
@@ -103,14 +103,11 @@ export async function GET(req: NextRequest) {
         }
       }),
 
-      // Faculty members (filtered by department)
+      // Faculty members (filtered by department) - all active users in department
       prisma.user.count({
         where: {
           department_id: userDepartmentId,
-          isActive: true,
-          role: {
-            name: "Teacher/Instructor"
-          }
+          isActive: true
         }
       }),
 
@@ -162,7 +159,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ success: true, data: stats })
   } catch (error) {
-    console.error("Error fetching dean dashboard stats:", error)
+    console.error("Error fetching office head dashboard stats:", error)
     return NextResponse.json(
       { error: "Failed to fetch dashboard statistics" },
       { status: 500 }

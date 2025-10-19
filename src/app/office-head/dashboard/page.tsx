@@ -17,7 +17,7 @@ import {
   ArrowRight
 } from "lucide-react"
 
-import dashboardData from "../../dashboard/data.json"
+// Removed hardcoded dean data import
 
 interface DashboardStats {
   pendingApplications: number
@@ -38,7 +38,7 @@ interface DashboardStats {
   }>
 }
 
-export default function DeanDashboardPage() {
+export default function OfficeHeadDashboardPage() {
   const { data: session, status } = useSession()
   const [stats, setStats] = useState<DashboardStats>({
     pendingApplications: 0,
@@ -97,20 +97,10 @@ export default function DeanDashboardPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600">      </div>
-
-      {/* Role-based Data Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Dean Management Overview</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <DataTable data={dashboardData.dean} />
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">

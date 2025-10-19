@@ -109,6 +109,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Create the leave application with automatic dean approval
+    // Handle medicalProof - convert File object to null or string
+    let medicalProofValue = null
+    if (medicalProof && typeof medicalProof === 'object' && medicalProof.name) {
+      // If it's a File object, we'll handle it later or set to null for now
+      medicalProofValue = null
+      console.log('🔍 Dean Leave Apply API - File object detected for medicalProof, setting to null')
+    } else if (typeof medicalProof === 'string') {
+      medicalProofValue = medicalProof
+    }
+
     console.log('🔍 Dean Leave Apply API - Creating leave application with data:', {
       users_id: user.users_id,
       leave_type_id: leaveTypeId,
@@ -121,7 +131,7 @@ export async function POST(request: NextRequest) {
       specificPurpose: specificPurpose || null,
       descriptionOfSickness: descriptionOfSickness || null,
       paymentStatus: paymentStatus || 'UNPAID',
-      medicalProof: medicalProof || null
+      medicalProof: medicalProofValue
     })
     
     const leaveApplication = await prisma.leaveApplication.create({
@@ -137,7 +147,7 @@ export async function POST(request: NextRequest) {
         specificPurpose: specificPurpose || null,
         descriptionOfSickness: descriptionOfSickness || null,
         paymentStatus: paymentStatus || 'UNPAID',
-        medicalProof: medicalProof || null,
+        medicalProof: medicalProofValue,
         status: 'DEAN_APPROVED', // Automatically approved by dean
         appliedAt: new Date(),
         deanReviewedAt: new Date(),

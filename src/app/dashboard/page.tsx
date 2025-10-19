@@ -3,6 +3,7 @@
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()
@@ -72,9 +73,15 @@ export default function DashboardPage() {
   if (status === 'loading') {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-2 text-gray-600">Loading...</p>
+        <div className="w-full max-w-md space-y-4 p-6">
+          <div className="text-center space-y-3">
+            <Skeleton className="h-8 w-8 rounded-full mx-auto" />
+            <Skeleton className="h-4 w-24 mx-auto" />
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4 mx-auto" />
+          </div>
         </div>
       </div>
     )
@@ -83,8 +90,15 @@ export default function DashboardPage() {
   if (!session) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <p className="text-gray-600">Redirecting to login...</p>
+        <div className="w-full max-w-md space-y-4 p-6">
+          <div className="text-center space-y-3">
+            <Skeleton className="h-8 w-8 rounded-full mx-auto" />
+            <Skeleton className="h-4 w-32 mx-auto" />
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-2/3 mx-auto" />
+          </div>
         </div>
       </div>
     )
@@ -92,10 +106,15 @@ export default function DashboardPage() {
 
   return (
     <div className="flex items-center justify-center min-h-screen">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-        <p className="mt-2 text-gray-600">Redirecting to your dashboard...</p>
-        <p className="text-sm text-gray-400 mt-1">Role: {(session.user as any)?.role}</p>
+      <div className="w-full max-w-md space-y-4 p-6">
+        <div className="text-center space-y-3">
+          <Skeleton className="h-8 w-8 rounded-full mx-auto" />
+          <Skeleton className="h-4 w-40 mx-auto" />
+        </div>
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-3 w-24 mx-auto" />
+        </div>
       </div>
     </div>
   )

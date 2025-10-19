@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import { 
   Table, 
   TableBody, 
@@ -347,9 +348,15 @@ export default function ManageLeaveLimitsPage() {
           <SidebarInset className="flex-1 flex flex-col">
             <SiteHeader />
             <div className="flex-1 flex items-center justify-center">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                <p className="mt-4 text-muted-foreground">Loading...</p>
+              <div className="w-full max-w-md space-y-4 p-6">
+                <div className="text-center space-y-3">
+                  <Skeleton className="h-8 w-8 rounded-full mx-auto" />
+                  <Skeleton className="h-4 w-24 mx-auto" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-3/4 mx-auto" />
+                </div>
               </div>
             </div>
           </SidebarInset>

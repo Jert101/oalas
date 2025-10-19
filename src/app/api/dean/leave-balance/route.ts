@@ -63,10 +63,11 @@ export async function GET(request: NextRequest) {
       }, { status: 404 })
     }
 
-    // Verify user is a Dean/Program Head
-    if (user.role?.name !== "Dean/Program Head") {
-      console.log(`Dean Leave balance API: User ${user.name} is not a Dean/Program Head`)
-      return NextResponse.json({ error: "Access denied. Dean/Program Head role required." }, { status: 403 })
+    // Verify user is a Dean/Program Head or Department Head
+    const allowedRoles = ["Dean/Program Head", "Department Head", "Admin"]
+    if (!user.role || !allowedRoles.includes(user.role.name)) {
+      console.log(`Dean Leave balance API: User ${user.name} is not authorized. Role: ${user.role?.name}`)
+      return NextResponse.json({ error: "Access denied. Dean/Program Head or Department Head role required." }, { status: 403 })
     }
 
     console.log(`Dean Leave balance API: Found dean: ${user.name} (${user.users_id})`)
@@ -88,7 +89,8 @@ export async function GET(request: NextRequest) {
       where: {
         users_id: user.users_id,
         calendar_period_id: currentPeriod.calendar_period_id,
-        leave_type_id: parseInt(leaveTypeId)
+        leave_type_id: parseInt(leaveTypeId),
+        term_type_id: currentPeriod.term_type_id
       }
     })
 
@@ -105,6 +107,32 @@ export async function GET(request: NextRequest) {
     if (!leaveBalance) {
       console.log(`Dean Leave balance API: No leave balance found for dean ${user.users_id}, period ${currentPeriod.calendar_period_id}, leave type ${leaveTypeId}`)
       
+      // Try to get the leave limit to create a default balance
+      const leaveLimit = await prisma.leaveLimit.findFirst({
+        where: {
+          status_id: user.status_id,
+          term_type_id: currentPeriod.term_type_id,
+          leave_type_id: parseInt(leaveTypeId)
+        }
+      })
+
+      if (leaveLimit) {
+        console.log('Dean Leave balance API: Found leave limit, creating default balance')
+        // Return a default balance based on the leave limit
+        const defaultBalance = {
+          allowedDays: leaveLimit.daysAllowed,
+          usedDays: 0,
+          remainingDays: leaveLimit.daysAllowed,
+          leaveType: {
+            name: 'Default'
+          }
+        }
+        
+        return NextResponse.json({
+          leaveBalance: defaultBalance
+        })
+      }
+      
       // Provide more detailed error information
       const userBalances = await prisma.leaveBalance.findMany({
         where: { users_id: user.users_id }
@@ -113,7 +141,7 @@ export async function GET(request: NextRequest) {
       console.log(`Dean has ${userBalances.length} total leave balances`);
       
       return NextResponse.json({ 
-        error: "Leave balance not found",
+        error: "Leave balance not found and no leave limit available",
         details: {
           user_id: user.users_id,
           calendar_period_id: currentPeriod.calendar_period_id,

@@ -52,10 +52,11 @@ export async function GET(request: NextRequest) {
       }, { status: 404 })
     }
 
-    // Verify user is a Dean/Program Head
-    if (user.role?.name !== "Dean/Program Head") {
-      console.log(`Dean Leave limits API: User ${user.name} is not a Dean/Program Head`)
-      return NextResponse.json({ error: "Access denied. Dean/Program Head role required." }, { status: 403 })
+    // Verify user is a Dean/Program Head or Department Head
+    const allowedRoles = ["Dean/Program Head", "Department Head", "Admin"]
+    if (!user.role || !allowedRoles.includes(user.role.name)) {
+      console.log(`Dean Leave limits API: User ${user.name} is not authorized. Role: ${user.role?.name}`)
+      return NextResponse.json({ error: "Access denied. Dean/Program Head or Department Head role required." }, { status: 403 })
     }
 
     console.log(`Dean Leave limits API: Found dean: ${user.name} (${user.users_id})`)
@@ -100,6 +101,37 @@ export async function GET(request: NextRequest) {
 
     if (!leaveLimit) {
       console.log(`Dean Leave limits API: No leave limit found for dean ${user.name} (status: ${user.status_id}, term: ${currentPeriod.term_type_id}, leave type: ${leaveTypeId})`)
+      
+      // Try to find any leave limit for this status and leave type (regardless of term)
+      const fallbackLimit = await prisma.leaveLimit.findFirst({
+        where: {
+          status_id: user.status_id,
+          leave_type_id: parseInt(leaveTypeId),
+          isActive: true
+        },
+        include: {
+          leaveType: {
+            select: {
+              name: true
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      })
+
+      if (fallbackLimit) {
+        console.log('Dean Leave limits API: Found fallback leave limit')
+        return NextResponse.json({
+          leaveLimit: {
+            leave_limit_id: fallbackLimit.leave_limit_id,
+            daysAllowed: fallbackLimit.daysAllowed,
+            leave_type_id: fallbackLimit.leave_type_id,
+            leaveType: fallbackLimit.leaveType
+          }
+        })
+      }
       
       return NextResponse.json({ 
         error: "Leave limit not found",

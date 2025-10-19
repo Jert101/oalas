@@ -5,9 +5,18 @@ import { prisma } from "@/lib/prisma"
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🔍 Dean Leave Apply API - Starting request processing')
     const session = await getServerSession(authOptions)
     
+    console.log('🔍 Dean Leave Apply API - Session check:', {
+      hasSession: !!session,
+      hasUser: !!session?.user,
+      userEmail: session?.user?.email,
+      userRole: (session?.user as any)?.role
+    })
+    
     if (!session?.user?.email) {
+      console.log('❌ Dean Leave Apply API - No session or user email found')
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
@@ -39,6 +48,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
+    console.log('🔍 Dean Leave Apply API - Request body:', body)
+    
     const {
       leaveTypeId,
       startDate,
@@ -56,21 +67,63 @@ export async function POST(request: NextRequest) {
       deanComments
     } = body
 
+    console.log('🔍 Dean Leave Apply API - Extracted fields:', {
+      leaveTypeId,
+      startDate,
+      endDate,
+      numberOfDays,
+      hours,
+      reason,
+      specificPurpose,
+      descriptionOfSickness,
+      paymentStatus,
+      medicalProof
+    })
+
     // Validate required fields
     if (!leaveTypeId || !startDate || !endDate || !numberOfDays) {
+      console.log('❌ Dean Leave Apply API - Missing required fields:', {
+        leaveTypeId: !!leaveTypeId,
+        startDate: !!startDate,
+        endDate: !!endDate,
+        numberOfDays: !!numberOfDays
+      })
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
     // Get current calendar period
+    console.log('🔍 Dean Leave Apply API - Looking up current calendar period')
     const currentPeriod = await prisma.calendarPeriod.findFirst({
       where: { isCurrent: true }
     })
 
+    console.log('🔍 Dean Leave Apply API - Current period:', {
+      found: !!currentPeriod,
+      periodId: currentPeriod?.calendar_period_id,
+      periodName: currentPeriod?.academicYear
+    })
+
     if (!currentPeriod) {
+      console.log('❌ Dean Leave Apply API - No current calendar period found')
       return NextResponse.json({ error: "No current calendar period found" }, { status: 404 })
     }
 
     // Create the leave application with automatic dean approval
+    console.log('🔍 Dean Leave Apply API - Creating leave application with data:', {
+      users_id: user.users_id,
+      leave_type_id: leaveTypeId,
+      calendar_period_id: currentPeriod.calendar_period_id,
+      startDate: startDate,
+      endDate: endDate,
+      numberOfDays: numberOfDays,
+      hours: hours || 0,
+      reason: reason || null,
+      specificPurpose: specificPurpose || null,
+      descriptionOfSickness: descriptionOfSickness || null,
+      paymentStatus: paymentStatus || 'UNPAID',
+      medicalProof: medicalProof || null
+    })
+    
     const leaveApplication = await prisma.leaveApplication.create({
       data: {
         users_id: user.users_id,
@@ -112,6 +165,12 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    console.log('✅ Dean Leave Apply API - Leave application created successfully:', {
+      applicationId: leaveApplication.leave_application_id,
+      status: leaveApplication.status,
+      applicantName: leaveApplication.user.name
+    })
+
     return NextResponse.json({
       success: true,
       message: "Leave application submitted and automatically approved",
@@ -121,7 +180,12 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Error creating leave application:', error)
+    console.error('❌ Dean Leave Apply API - Error creating leave application:', error)
+    console.error('❌ Dean Leave Apply API - Error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    })
     return NextResponse.json(
       { error: "Failed to create leave application" },
       { status: 500 }

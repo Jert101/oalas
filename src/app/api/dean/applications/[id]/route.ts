@@ -51,19 +51,23 @@ export async function GET(
     
     // Handle different ID formats: "leave_24", "travel_5", or just "24"
     let applicationId: number
+    let isTravelOrder = false
+    
     if (originalId.startsWith('leave_')) {
       applicationId = parseInt(originalId.replace('leave_', ''))
+      isTravelOrder = false
     } else if (originalId.startsWith('travel_')) {
-      // For travel orders, we need to handle differently
-      console.log('❌ Travel order ID detected, redirecting to travel order API:', originalId)
-      return NextResponse.json({ error: "Travel orders are not handled by this endpoint" }, { status: 400 })
+      applicationId = parseInt(originalId.replace('travel_', ''))
+      isTravelOrder = true
     } else {
       applicationId = parseInt(originalId)
+      isTravelOrder = false
     }
 
     console.log('🔍 Dean Application Detail API - Request details:', {
       applicationId: applicationId,
       originalId: originalId,
+      isTravelOrder: isTravelOrder,
       isNaN: isNaN(applicationId)
     })
 
@@ -72,48 +76,90 @@ export async function GET(
       return NextResponse.json({ error: "Invalid application ID" }, { status: 400 })
     }
 
-    // Get the specific application
-    console.log('🔍 Dean Application Detail API - Looking up application:', applicationId)
-    const application = await prisma.leaveApplication.findUnique({
-      where: {
-        leave_application_id: applicationId
-      },
-      include: {
-        user: {
-          select: {
-            users_id: true,
-            name: true,
-            email: true,
-            profilePicture: true,
-            department_id: true,
-            department: {
-              select: {
-                department_id: true,
-                name: true
+    // Get the specific application (either leave or travel)
+    console.log('🔍 Dean Application Detail API - Looking up application:', applicationId, 'Type:', isTravelOrder ? 'travel' : 'leave')
+    
+    let application
+    if (isTravelOrder) {
+      application = await prisma.travelOrder.findUnique({
+        where: {
+          travel_order_id: applicationId
+        },
+        include: {
+          user: {
+            select: {
+              users_id: true,
+              name: true,
+              email: true,
+              profilePicture: true,
+              department_id: true,
+              department: {
+                select: {
+                  department_id: true,
+                  name: true
+                }
               }
             }
-          }
-        },
-        calendarPeriod: {
-          select: {
-            academicYear: true,
-            startDate: true,
-            endDate: true
-          }
-        },
-        reviewer: {
-          select: {
-            name: true,
-            email: true
+          },
+          calendarPeriod: {
+            select: {
+              academicYear: true,
+              startDate: true,
+              endDate: true
+            }
+          },
+          reviewer: {
+            select: {
+              name: true,
+              email: true
+            }
           }
         }
-      }
-    })
+      })
+    } else {
+      application = await prisma.leaveApplication.findUnique({
+        where: {
+          leave_application_id: applicationId
+        },
+        include: {
+          user: {
+            select: {
+              users_id: true,
+              name: true,
+              email: true,
+              profilePicture: true,
+              department_id: true,
+              department: {
+                select: {
+                  department_id: true,
+                  name: true
+                }
+              }
+            }
+          },
+          calendarPeriod: {
+            select: {
+              academicYear: true,
+              startDate: true,
+              endDate: true
+            }
+          },
+          reviewer: {
+            select: {
+              name: true,
+              email: true
+            }
+          }
+        }
+      })
+    }
 
     console.log('🔍 Dean Application Detail API - Application found:', !!application)
     if (application) {
+      const appId = isTravelOrder ? application.travel_order_id : application.leave_application_id
       console.log('🔍 Dean Application Detail API - Application details:', {
-        id: application.leave_application_id,
+        id: appId,
+        type: isTravelOrder ? 'travel' : 'leave',
         applicantName: application.user.name,
         applicantEmail: application.user.email,
         applicantDeptId: application.user.department_id,
@@ -121,17 +167,20 @@ export async function GET(
       })
     }
 
-    // Get leave type information
-    const leaveType = application ? await prisma.leave_types.findUnique({
-      where: {
-        leave_type_id: application.leave_type_id
-      },
-      select: {
-        leave_type_id: true,
-        name: true,
-        description: true
-      }
-    }) : null
+    // Get leave type information (only for leave applications)
+    let leaveType = null
+    if (application && !isTravelOrder) {
+      leaveType = await prisma.leave_types.findUnique({
+        where: {
+          leave_type_id: application.leave_type_id
+        },
+        select: {
+          leave_type_id: true,
+          name: true,
+          description: true
+        }
+      })
+    }
 
     if (!application) {
       return NextResponse.json({ error: "Application not found" }, { status: 404 })

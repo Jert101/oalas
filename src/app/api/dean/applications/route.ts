@@ -65,42 +65,79 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "No current calendar period found" }, { status: 404 })
     }
 
-    // Get leave applications for faculty in the dean's department
-    const leaveApplications = await prisma.leaveApplication.findMany({
-      where: {
-        calendar_period_id: currentPeriod.calendar_period_id,
-        user: {
-          department_id: user.department_id,
-          isActive: true
-        }
-      },
-      include: {
-        user: {
-          select: {
-            name: true,
-            email: true,
-            profilePicture: true,
-            department: {
-              select: {
-                name: true
+    // Get both leave applications and travel orders for faculty in the dean's department
+    const [leaveApplications, travelOrders] = await Promise.all([
+      // Leave applications
+      prisma.leaveApplication.findMany({
+        where: {
+          calendar_period_id: currentPeriod.calendar_period_id,
+          user: {
+            department_id: user.department_id,
+            isActive: true
+          }
+        },
+        include: {
+          user: {
+            select: {
+              name: true,
+              email: true,
+              profilePicture: true,
+              department: {
+                select: {
+                  name: true
+                }
               }
+            }
+          },
+          calendarPeriod: {
+            select: {
+              academicYear: true,
+              startDate: true,
+              endDate: true
             }
           }
         },
-        calendarPeriod: {
-          select: {
-            academicYear: true,
-            startDate: true,
-            endDate: true
-          }
+        orderBy: {
+          appliedAt: 'desc'
         }
-      },
-      orderBy: {
-        appliedAt: 'desc'
-      }
-    })
+      }),
+      // Travel orders
+      prisma.travelOrder.findMany({
+        where: {
+          calendar_period_id: currentPeriod.calendar_period_id,
+          user: {
+            department_id: user.department_id,
+            isActive: true
+          }
+        },
+        include: {
+          user: {
+            select: {
+              name: true,
+              email: true,
+              profilePicture: true,
+              department: {
+                select: {
+                  name: true
+                }
+              }
+            }
+          },
+          calendarPeriod: {
+            select: {
+              academicYear: true,
+              startDate: true,
+              endDate: true
+            }
+          }
+        },
+        orderBy: {
+          appliedAt: 'desc'
+        }
+      })
+    ])
 
-    // Get leave types for all applications
+    // Get leave types for all leave applications
     const leaveTypeIds = [...new Set(leaveApplications.map(app => app.leave_type_id))]
     const leaveTypes = await prisma.leave_types.findMany({
       where: {
@@ -110,16 +147,32 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Map leave types to applications
-    const applicationsWithLeaveTypes = leaveApplications.map(app => ({
+    // Transform leave applications to match expected format
+    const formattedLeaveApplications = leaveApplications.map(app => ({
       ...app,
-      leaveType: leaveTypes.find(lt => lt.leave_type_id === app.leave_type_id)
+      leaveType: leaveTypes.find(lt => lt.leave_type_id === app.leave_type_id),
+      id: `leave_${app.leave_application_id}`,
+      type: 'leave' as const
     }))
+
+    // Transform travel orders to match expected format
+    const formattedTravelOrders = travelOrders.map(order => ({
+      ...order,
+      id: `travel_${order.travel_order_id}`,
+      type: 'travel' as const,
+      leaveType: null // Travel orders don't have leave types
+    }))
+
+    // Combine both types of applications
+    const allApplications = [...formattedLeaveApplications, ...formattedTravelOrders]
+    
+    // Sort by appliedAt date (most recent first)
+    allApplications.sort((a, b) => new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime())
 
     return NextResponse.json({
       success: true,
       data: {
-        applications: applicationsWithLeaveTypes,
+        applications: allApplications,
         deanDepartment: user.department?.name,
         currentPeriod: {
           academicYear: currentPeriod.academicYear,

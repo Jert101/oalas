@@ -116,22 +116,70 @@ export async function GET(request: NextRequest) {
     if (!leaveBalance) {
       console.log(`Office Head Leave balance API: No leave balance found for office head ${user.users_id}, period ${currentPeriod.calendar_period_id}, leave type ${leaveTypeId}`)
       
-      // Provide more detailed error information
-      const userBalances = await prisma.leaveBalance.findMany({
-        where: { users_id: user.users_id }
-      });
-      
-      console.log(`Office Head has ${userBalances.length} total leave balances`);
-      
-      return NextResponse.json({ 
-        error: "Leave balance not found",
-        details: {
-          user_id: user.users_id,
-          calendar_period_id: currentPeriod.calendar_period_id,
-          leave_type_id: leaveTypeId,
-          total_user_balances: userBalances.length
+      // Try to get leave limits to create a virtual balance
+      const leaveLimit = await prisma.leaveLimit.findFirst({
+        where: {
+          status_id: user.status_id || 1,
+          leave_type_id: parseInt(leaveTypeId),
+          termType: {
+            term_type_id: currentPeriod.termType?.term_type_id
+          },
+          isActive: true
+        },
+        include: {
+          leaveType: true
         }
-      }, { status: 404 })
+      })
+
+      if (!leaveLimit) {
+        console.log(`Office Head Leave balance API: No leave limit found for status ${user.status_id}, leave type ${leaveTypeId}`)
+        return NextResponse.json({ 
+          error: "Leave limit not found for this leave type and status",
+          details: {
+            user_id: user.users_id,
+            status_id: user.status_id,
+            leave_type_id: leaveTypeId
+          }
+        }, { status: 404 })
+      }
+
+      // Create a virtual balance based on leave limits
+      console.log(`Office Head Leave balance API: Creating virtual balance from limit: ${leaveLimit.daysAllowed} days`)
+      
+      // Calculate used days from approved applications
+      const usedApplications = await prisma.leaveApplication.findMany({
+        where: {
+          users_id: user.users_id,
+          calendar_period_id: currentPeriod.calendar_period_id,
+          leave_type_id: parseInt(leaveTypeId),
+          status: 'APPROVED'
+        }
+      })
+
+      const usedDays = usedApplications.reduce((total, app) => {
+        const startDate = new Date(app.startDate)
+        const endDate = new Date(app.endDate)
+        const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+        return total + days
+      }, 0)
+
+      const remainingDays = Math.max(0, leaveLimit.daysAllowed - usedDays)
+
+      const virtualBalance = {
+        allowedDays: leaveLimit.daysAllowed,
+        usedDays: usedDays,
+        remainingDays: remainingDays,
+        leaveType: {
+          name: leaveLimit.leaveType?.name || 'Unknown'
+        }
+      }
+
+      console.log('Office Head Leave balance API: Returning virtual balance:', virtualBalance)
+      
+      return NextResponse.json({
+        leaveBalance: virtualBalance,
+        isVirtual: true // Indicate this is a virtual balance, not from database
+      })
     }
 
     console.log(`Office Head Leave balance API: Found balance - allowed: ${leaveBalance.allowedDays}, used: ${leaveBalance.usedDays}, remaining: ${leaveBalance.remainingDays}`)

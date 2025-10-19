@@ -117,19 +117,39 @@ export async function GET(request: NextRequest) {
       })
 
       if (leaveLimit) {
-        console.log('Dean Leave balance API: Found leave limit, creating default balance')
-        // Return a default balance based on the leave limit
-        const defaultBalance = {
+        console.log('Dean Leave balance API: Found leave limit, creating virtual balance')
+        
+        // Calculate used days from approved applications
+        const usedApplications = await prisma.leaveApplication.findMany({
+          where: {
+            users_id: user.users_id,
+            calendar_period_id: currentPeriod.calendar_period_id,
+            leave_type_id: parseInt(leaveTypeId),
+            status: 'APPROVED'
+          }
+        })
+
+        const usedDays = usedApplications.reduce((total, app) => {
+          const startDate = new Date(app.startDate)
+          const endDate = new Date(app.endDate)
+          const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+          return total + days
+        }, 0)
+
+        const remainingDays = Math.max(0, leaveLimit.daysAllowed - usedDays)
+
+        const virtualBalance = {
           allowedDays: leaveLimit.daysAllowed,
-          usedDays: 0,
-          remainingDays: leaveLimit.daysAllowed,
+          usedDays: usedDays,
+          remainingDays: remainingDays,
           leaveType: {
-            name: 'Default'
+            name: leaveLimit.leaveType?.name || 'Unknown'
           }
         }
         
         return NextResponse.json({
-          leaveBalance: defaultBalance
+          leaveBalance: virtualBalance,
+          isVirtual: true
         })
       }
       

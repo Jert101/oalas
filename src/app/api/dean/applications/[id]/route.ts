@@ -207,13 +207,25 @@ export async function GET(
 
     console.log('✅ Dean Application Detail API - Department verification passed')
 
+    // Return the application with proper ID fields
+    const applicationWithCorrectIds = {
+      ...application,
+      leaveType: leaveType,
+      // Ensure both ID fields are available for frontend compatibility
+      travel_order_id: isTravelOrder ? application.travel_order_id : undefined,
+      leave_application_id: isTravelOrder ? undefined : application.leave_application_id
+    }
+
+    console.log('🔍 Dean Application Detail API - Returning application with IDs:', {
+      travel_order_id: applicationWithCorrectIds.travel_order_id,
+      leave_application_id: applicationWithCorrectIds.leave_application_id,
+      isTravelOrder: isTravelOrder
+    })
+
     return NextResponse.json({
       success: true,
       data: {
-        application: {
-          ...application,
-          leaveType: leaveType
-        }
+        application: applicationWithCorrectIds
       }
     })
 

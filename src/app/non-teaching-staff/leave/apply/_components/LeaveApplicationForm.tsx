@@ -370,6 +370,7 @@ export function LeaveApplicationForm({
                 <DateValidation 
                   startDate={startDate}
                   endDate={endDate}
+                  leaveTypeId={leaveType?.leave_type_id}
                   onValidationChange={setIsDateValid}
                 />
               </div>

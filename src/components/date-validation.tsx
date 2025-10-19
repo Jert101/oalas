@@ -15,6 +15,7 @@ import { formatDateForDisplay, getApplicationTypeName } from "@/lib/validation-s
 interface DateValidationProps {
   startDate: string
   endDate: string
+  leaveTypeId?: number
   onValidationChange?: (isValid: boolean) => void
 }
 
@@ -27,6 +28,7 @@ interface ValidationResult {
 export default function DateValidation({ 
   startDate, 
   endDate, 
+  leaveTypeId,
   onValidationChange 
 }: DateValidationProps) {
   const [validation, setValidation] = useState<ValidationResult | null>(null)
@@ -39,7 +41,7 @@ export default function DateValidation({
       setValidation(null)
       onValidationChange?.(true)
     }
-  }, [startDate, endDate])
+  }, [startDate, endDate, leaveTypeId])
 
   useEffect(() => {
     if (validation) {
@@ -50,7 +52,16 @@ export default function DateValidation({
   const checkDateValidation = async () => {
     try {
       setIsLoading(true)
-      const response = await fetch(`/api/teacher/validation?startDate=${startDate}&endDate=${endDate}`)
+      
+      // Build query parameters
+      const params = new URLSearchParams()
+      params.append('startDate', startDate)
+      params.append('endDate', endDate)
+      if (leaveTypeId) {
+        params.append('leaveTypeId', leaveTypeId.toString())
+      }
+      
+      const response = await fetch(`/api/teacher/validation?${params.toString()}`)
       
       if (response.ok) {
         const data = await response.json()

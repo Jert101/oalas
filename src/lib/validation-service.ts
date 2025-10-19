@@ -125,8 +125,8 @@ export async function checkDateConflicts(
       
       if (leaveType?.exempt_from_date_restriction) {
         return {
-          isValid: true,
-          message: "Leave type is exempt from date restrictions"
+          canApply: true,
+          reason: "Leave type is exempt from date restrictions"
         }
       }
     }

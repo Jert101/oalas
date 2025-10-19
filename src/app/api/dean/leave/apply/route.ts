@@ -61,11 +61,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
+    // Get current calendar period
+    const currentPeriod = await prisma.calendarPeriod.findFirst({
+      where: { isCurrent: true }
+    })
+
+    if (!currentPeriod) {
+      return NextResponse.json({ error: "No current calendar period found" }, { status: 404 })
+    }
+
     // Create the leave application with automatic dean approval
     const leaveApplication = await prisma.leaveApplication.create({
       data: {
         users_id: user.users_id,
         leave_type_id: leaveTypeId,
+        calendar_period_id: currentPeriod.calendar_period_id,
         startDate: new Date(startDate),
         endDate: new Date(endDate),
         numberOfDays: numberOfDays,

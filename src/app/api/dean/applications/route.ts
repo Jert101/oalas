@@ -35,6 +35,9 @@ export async function GET(request: NextRequest) {
 
     // Allow both Dean/Program Head and Department Head to access applications
     const allowedRoles = ["Dean/Program Head", "Department Head"]
+    const isAllowed = user.role?.name && allowedRoles.includes(user.role.name)
+    const isDepartmentHead = user.isDepartmentHead === true
+    
     console.log('🔍 Dean Applications API - User verification:', {
       userId: user.users_id,
       userEmail: user.email,
@@ -42,12 +45,13 @@ export async function GET(request: NextRequest) {
       roleName: user.role?.name,
       roleId: user.role?.role_id,
       departmentId: user.department_id,
-      departmentName: user.department?.name
+      departmentName: user.department?.name,
+      isDepartmentHead: isDepartmentHead
     })
     
-    if (!allowedRoles.includes(user.role?.name || "")) {
+    if (!isAllowed && !isDepartmentHead) {
       console.log('❌ Access denied - User role:', user.role?.name, 'Expected: Dean/Program Head or Department Head')
-      return NextResponse.json({ error: "Access denied" }, { status: 403 })
+      return NextResponse.json({ error: "Access denied. Dean/Program Head or Department Head role required." }, { status: 403 })
     }
     
     console.log('✅ User verified as:', user.role?.name)

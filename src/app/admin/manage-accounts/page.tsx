@@ -716,10 +716,11 @@ export default function ManageAccountsPage() {
         } as React.CSSProperties
       }
     >
-      <AppSidebar variant="inset" />
+      <AppSidebar />
       <SidebarInset>
         <SiteHeader />
         <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
+          <div className="space-y-6">
             {/* Header */}
             <div className="mb-6">
               <h1 className="text-3xl font-bold">Manage Accounts</h1>
@@ -1851,6 +1852,7 @@ export default function ManageAccountsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+          </div>
         </div>
       </SidebarInset>
     </SidebarProvider>

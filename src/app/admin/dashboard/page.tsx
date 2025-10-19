@@ -119,24 +119,6 @@ export default function AdminDashboardPage() {
         <SiteHeader />
         <div className="flex flex-1 flex-col">
           <div className="@container/main flex flex-1 flex-col gap-2">
-            {/* Admin Dashboard Header */}
-            <div className="border-b bg-background px-4 py-4 lg:px-6">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                  <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Admin Dashboard</h1>
-                  <p className="text-muted-foreground text-sm sm:text-base">
-                    Welcome back, {session.user.name}. Manage the OALASS system and user accounts.
-                  </p>
-                </div>
-                <div className="flex gap-2 w-full sm:w-auto">
-                  <Button onClick={() => router.push('/admin/add-account')} variant="outline">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add User
-                  </Button>
-
-                </div>
-              </div>
-            </div>
 
             <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
               {/* Admin-Specific Statistics Cards */}

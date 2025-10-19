@@ -104,25 +104,6 @@ export default function FinanceDashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Welcome Section */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Finance Dashboard</h1>
-          <p className="text-muted-foreground text-sm sm:text-base">
-            Welcome back, {session?.user?.name}. Review and approve leave applications.
-          </p>
-        </div>
-        <div className="flex gap-2 w-full sm:w-auto">
-          <Button onClick={() => router.push('/finance/applications')} variant="outline">
-            <Eye className="mr-2 h-4 w-4" />
-            View Applications
-          </Button>
-          <Button onClick={() => router.push('/finance/reports')}>
-            <FileText className="mr-2 h-4 w-4" />
-            Reports
-          </Button>
-        </div>
-      </div>
 
       {/* Leave Application Statistics Cards */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">

@@ -125,25 +125,6 @@ export default function DeanDashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Welcome Section */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Dean Dashboard</h1>
-          <p className="text-muted-foreground text-sm sm:text-base">
-            Manage your department&apos;s leave applications and faculty
-          </p>
-        </div>
-        <div className="flex gap-2 w-full sm:w-auto">
-          <Button onClick={() => router.push('/dean/applications')} variant="outline">
-            <FileText className="mr-2 h-4 w-4" />
-            View Applications
-          </Button>
-          <Button onClick={() => router.push('/dean/leave')}>
-            <Calendar className="mr-2 h-4 w-4" />
-            Leave Management
-          </Button>
-        </div>
-      </div>
 
       {/* Statistics Cards */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">

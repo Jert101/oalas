@@ -136,29 +136,6 @@ export default function TeacherDashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Welcome Section */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Welcome back, {session?.user?.name}</h1>
-          <p className="text-muted-foreground">
-            Here&apos;s what&apos;s happening with your leave applications
-          </p>
-        </div>
-        <div className="flex flex-col items-end gap-2">
-          <Button 
-            onClick={() => router.push('/teacher/leave/apply')}
-            disabled={!canApply}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Apply for Leave
-          </Button>
-          {!canApply && (
-            <p className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-200">
-              ⚠️ You have pending applications that need to be reviewed first
-            </p>
-          )}
-        </div>
-      </div>
 
       {/* Statistics Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

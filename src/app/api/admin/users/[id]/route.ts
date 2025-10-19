@@ -119,51 +119,44 @@ export async function DELETE(
 
     // Delete the user and all related records using a transaction
     await prisma.$transaction(async (tx) => {
-      // Delete related records first (in case of foreign key constraints)
+      // Step 1: Delete ALL related data first (comprehensive cleanup)
       
-      // Delete leave applications
-      if (relatedRecords?.leaveApplications && relatedRecords.leaveApplications.length > 0) {
-        await tx.leaveApplication.deleteMany({
-          where: { users_id: userId }
-        })
-      }
+      // Delete leave applications (with all related data)
+      await tx.leaveApplication.deleteMany({
+        where: { users_id: userId }
+      })
 
       // Delete leave balances
-      if (leaveBalances && leaveBalances.length > 0) {
-        await tx.leaveBalance.deleteMany({
-          where: { users_id: userId }
-        })
-      }
+      await tx.leaveBalance.deleteMany({
+        where: { users_id: userId }
+      })
 
       // Delete probation records
-      if (relatedRecords?.probation) {
-        await tx.probation.deleteMany({
-          where: { users_id: userId }
-        })
-      }
+      await tx.probation.deleteMany({
+        where: { users_id: userId }
+      })
 
       // Delete travel orders
-      if (relatedRecords?.travelOrders && relatedRecords.travelOrders.length > 0) {
-        await tx.travelOrder.deleteMany({
-          where: { users_id: userId }
-        })
-      }
+      await tx.travelOrder.deleteMany({
+        where: { users_id: userId }
+      })
 
       // Delete notifications
-      if (relatedRecords?.notifications && relatedRecords.notifications.length > 0) {
-        await tx.notification.deleteMany({
-          where: { userId: userId }
-        })
-      }
+      await tx.notification.deleteMany({
+        where: { userId: userId }
+      })
 
-      // Delete accounts (sessions will be handled by cascade)
-      if (relatedRecords?.accounts && relatedRecords.accounts.length > 0) {
-        await tx.account.deleteMany({
-          where: { users_id: userId }
-        })
-      }
+      // Delete accounts (OAuth accounts)
+      await tx.account.deleteMany({
+        where: { users_id: userId }
+      })
 
-      // Finally, delete the user
+      // Delete sessions
+      await tx.session.deleteMany({
+        where: { users_id: userId }
+      })
+
+      // Step 2: Finally, delete the user account itself
       await tx.user.delete({
         where: { users_id: userId }
       })
@@ -171,7 +164,7 @@ export async function DELETE(
 
     return NextResponse.json({
       success: true,
-      message: `User deleted successfully. Also deleted: ${deletionSummary.leaveApplications} leave applications, ${deletionSummary.leaveBalances} leave balances, ${deletionSummary.probation} probation record, ${deletionSummary.travelOrders} travel orders, ${deletionSummary.notifications} notifications, and ${deletionSummary.accounts} accounts.`,
+      message: `User and all related data deleted successfully! Deleted: ${deletionSummary.leaveApplications} leave applications, ${deletionSummary.leaveBalances} leave balances, ${deletionSummary.probation} probation record, ${deletionSummary.travelOrders} travel orders, ${deletionSummary.notifications} notifications, and ${deletionSummary.accounts} accounts.`,
       deletedRecords: deletionSummary
     })
 

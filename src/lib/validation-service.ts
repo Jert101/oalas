@@ -19,11 +19,24 @@ export async function checkPendingApplications(userId: string): Promise<Validati
   try {
     console.log('🔍 Checking pending applications for user ID:', userId)
     
-    // Check for pending or dean-approved leave applications (waiting for finance)
+    // First, check if the user is a Dean/Program Head
+    const user = await prisma.user.findUnique({
+      where: { users_id: userId },
+      include: { role: true }
+    })
+
+    const isDean = user?.role?.name === "Dean/Program Head"
+    console.log('User is Dean/Program Head:', isDean)
+
+    // For deans, only check for truly pending applications (not DEAN_APPROVED)
+    // For other users, check for both PENDING and DEAN_APPROVED
+    const statusFilter = isDean ? ['PENDING'] : ['PENDING', 'DEAN_APPROVED']
+    
+    // Check for pending leave applications
     const pendingLeaveApplications = await prisma.leaveApplication.findMany({
       where: {
         users_id: userId,
-        status: { in: ['PENDING', 'DEAN_APPROVED'] }
+        status: { in: statusFilter }
       },
       select: {
         leave_application_id: true,
@@ -33,24 +46,26 @@ export async function checkPendingApplications(userId: string): Promise<Validati
         specificPurpose: true,
         descriptionOfSickness: true,
         appliedAt: true,
-        leave_type_id: true
+        leave_type_id: true,
+        status: true
       }
     })
 
     console.log('Found pending leave applications:', pendingLeaveApplications.length)
 
-    // Check for pending or dean-approved travel orders (waiting for finance)
+    // Check for pending travel orders
     const pendingTravelOrders = await prisma.travelOrder.findMany({
       where: {
         users_id: userId,
-        status: { in: ['PENDING', 'DEAN_APPROVED'] }
+        status: { in: statusFilter }
       },
       select: {
         travel_order_id: true,
         dateOfTravel: true,
         expectedReturn: true,
         purpose: true,
-        appliedAt: true
+        appliedAt: true,
+        status: true
       }
     })
 

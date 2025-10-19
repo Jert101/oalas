@@ -65,7 +65,14 @@ export async function GET(request: NextRequest) {
 
     // Verify user is a Dean/Program Head or Department Head
     const allowedRoles = ["Dean/Program Head", "Department Head", "Admin"]
-    if (!user.role || !allowedRoles.includes(user.role.name)) {
+    const isAllowed = user.role?.name && allowedRoles.includes(user.role.name)
+    const isDepartmentHead = user.isDepartmentHead === true
+    
+    console.log('User role:', user.role?.name)
+    console.log('Is department head:', isDepartmentHead)
+    console.log('Role allowed:', isAllowed)
+    
+    if (!isAllowed && !isDepartmentHead) {
       console.log(`Dean Leave balance API: User ${user.name} is not authorized. Role: ${user.role?.name}`)
       return NextResponse.json({ error: "Access denied. Dean/Program Head or Department Head role required." }, { status: 403 })
     }

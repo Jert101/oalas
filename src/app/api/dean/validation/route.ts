@@ -24,13 +24,16 @@ export async function GET(request: NextRequest) {
 
     // Get current user
     const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
+      where: { email: session.user.email },
+      include: { role: true }
     })
 
     console.log('User found:', !!user)
     if (user) {
       console.log('User ID:', user.users_id)
       console.log('User name:', user.name)
+      console.log('User role:', user.role?.name)
+      console.log('Is department head:', user.isDepartmentHead)
     }
 
     if (!user) {

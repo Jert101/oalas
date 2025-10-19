@@ -24,9 +24,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    // Verify user is a Dean/Program Head
-    if (user.role?.name !== "Dean/Program Head") {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 })
+    // Verify user is a Dean/Program Head or has department head privileges
+    const allowedRoles = ["Dean/Program Head", "Department Head"]
+    const isAllowed = user.role?.name && allowedRoles.includes(user.role.name)
+    const isDepartmentHead = user.isDepartmentHead === true
+    
+    console.log('User role:', user.role?.name)
+    console.log('Is department head:', isDepartmentHead)
+    console.log('Role allowed:', isAllowed)
+    
+    if (!isAllowed && !isDepartmentHead) {
+      console.log('❌ Access denied - User role:', user.role?.name, 'Expected: Dean/Program Head or Department Head')
+      return NextResponse.json({ error: "Access denied. Dean/Program Head or Department Head role required." }, { status: 403 })
     }
 
     const body = await request.json()

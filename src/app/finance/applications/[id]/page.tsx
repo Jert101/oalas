@@ -25,15 +25,16 @@ import {
 } from "lucide-react"
 
 interface LeaveApplication {
-  leave_application_id: number
+  leave_application_id?: number
+  travel_order_id?: number
   startDate: string
   endDate: string
   status: 'PENDING' | 'DEAN_APPROVED' | 'DEAN_REJECTED' | 'APPROVED' | 'DENIED'
   appliedAt: string
   reviewedAt?: string
   reason?: string
-  numberOfDays: number
-  hours: number
+  numberOfDays?: number
+  hours?: number
   specificPurpose?: string
   descriptionOfSickness?: string
   medicalProof?: string
@@ -42,12 +43,21 @@ interface LeaveApplication {
   deanReviewedBy?: string
   deanComments?: string
   deanRejectionReason?: string
-  paymentStatus: 'PAID' | 'UNPAID'
+  paymentStatus?: 'PAID' | 'UNPAID'
   leaveType?: {
     leave_type_id: number
     name: string
     description?: string
-  }
+  } | null
+  // Travel order specific fields
+  destination?: string
+  purpose?: string
+  transportationFee?: number
+  seminarConferenceFee?: number
+  mealsAccommodations?: number
+  totalCashRequested?: number
+  remarks?: string
+  supportingDocuments?: string
   user: {
     name: string
     email: string
@@ -155,7 +165,8 @@ export default function FinanceApplicationDetailPage() {
     
     setIsApproving(true)
     try {
-      const res = await fetch(`/api/finance/applications/${application.leave_application_id}/approve`, {
+      // Use the formatted ID from the URL parameter
+      const res = await fetch(`/api/finance/applications/${params.id}/approve`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -186,7 +197,8 @@ export default function FinanceApplicationDetailPage() {
     
     setIsRejecting(true)
     try {
-      const res = await fetch(`/api/finance/applications/${application.leave_application_id}/reject`, {
+      // Use the formatted ID from the URL parameter
+      const res = await fetch(`/api/finance/applications/${params.id}/reject`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -328,9 +340,11 @@ export default function FinanceApplicationDetailPage() {
       </div>
 
       <div>
-        <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Leave Application Details</h1>
+        <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">
+          {application.travel_order_id ? 'Travel Order Details' : 'Leave Application Details'}
+        </h1>
         <p className="text-muted-foreground">
-          Application ID: {application.leave_application_id}
+          Application ID: {application.travel_order_id || application.leave_application_id}
         </p>
       </div>
 
@@ -364,43 +378,82 @@ export default function FinanceApplicationDetailPage() {
           </CardContent>
         </Card>
 
-        {/* Leave Details */}
+        {/* Application Details */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
-              Leave Details
+              {application.travel_order_id ? 'Travel Details' : 'Leave Details'}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm font-medium text-gray-500">Start Date</p>
-                <p className="text-sm">{formatDate(application.startDate)}</p>
+            {application.travel_order_id ? (
+              // Travel Order Details
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Destination</p>
+                  <p className="text-sm">{application.destination || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Purpose</p>
+                  <p className="text-sm">{application.purpose || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Date of Travel</p>
+                  <p className="text-sm">{formatDate(application.startDate)}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Expected Return</p>
+                  <p className="text-sm">{formatDate(application.endDate)}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Transportation Fee</p>
+                  <p className="text-sm">₱{application.transportationFee || 0}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Seminar/Conference Fee</p>
+                  <p className="text-sm">₱{application.seminarConferenceFee || 0}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Meals & Accommodations</p>
+                  <p className="text-sm">₱{application.mealsAccommodations || 0}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Total Cash Requested</p>
+                  <p className="text-sm font-bold">₱{application.totalCashRequested || 0}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500">End Date</p>
-                <p className="text-sm">{formatDate(application.endDate)}</p>
+            ) : (
+              // Leave Application Details
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Start Date</p>
+                  <p className="text-sm">{formatDate(application.startDate)}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">End Date</p>
+                  <p className="text-sm">{formatDate(application.endDate)}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Number of Days</p>
+                  <p className="text-sm">{application.numberOfDays} days</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Hours</p>
+                  <p className="text-sm">{application.hours} hours</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Leave Type</p>
+                  <p className="text-sm font-medium">{application.leaveType?.name || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Payment Status</p>
+                  <Badge className={application.paymentStatus === 'PAID' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                    {application.paymentStatus}
+                  </Badge>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500">Number of Days</p>
-                <p className="text-sm">{application.numberOfDays} days</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500">Hours</p>
-                <p className="text-sm">{application.hours} hours</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500">Leave Type</p>
-                <p className="text-sm font-medium">{application.leaveType?.name || 'N/A'}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500">Payment Status</p>
-                <Badge className={application.paymentStatus === 'PAID' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
-                  {application.paymentStatus}
-                </Badge>
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 

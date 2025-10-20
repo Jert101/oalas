@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { notifyFinanceRejectionToDean } from '@/lib/notification-service'
+import { notifyFinanceRejectionToDean, notifyFinanceRejectionToApplicant } from '@/lib/notification-service'
 
 // Function to send real-time application updates
 async function sendRealtimeApplicationUpdate(userId: string, application: any, updateType: 'update') {
@@ -254,6 +254,22 @@ export async function POST(
         console.log(`✅ Finance rejection notification sent to Dean: ${deanUser.name}`)
       } else {
         console.log('⚠️ No Dean user found to notify about finance rejection')
+      }
+
+      // Send notification and email to applicant about rejection
+      try {
+        const isTravelOrder = application.travel_order_id !== null
+        const leaveType = isTravelOrder ? 'Travel Order' : (application.leaveType?.name || 'Leave')
+        
+        await notifyFinanceRejectionToApplicant(
+          application.users_id,
+          applicationId,
+          rejectionReason.trim(),
+          leaveType
+        )
+        console.log(`✅ Finance rejection notification sent to Applicant: ${application.user.name}`)
+      } catch (error) {
+        console.error('❌ Error sending finance rejection notification to Applicant:', error)
       }
     } catch (error) {
       console.error('❌ Error sending finance rejection notification to Dean:', error)

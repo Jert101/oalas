@@ -21,18 +21,20 @@ import {
 } from "lucide-react"
 
 interface LeaveApplication {
-  leave_application_id: number
+  id: string
+  leave_application_id?: number
+  travel_order_id?: number
   startDate: string
   endDate: string
   status: 'PENDING' | 'DEAN_APPROVED' | 'DEAN_REJECTED' | 'APPROVED' | 'DENIED'
   appliedAt: string
-  reason: string
-  numberOfDays: number
-  hours: number
+  reason?: string
+  numberOfDays?: number
+  hours?: number
   specificPurpose?: string
   descriptionOfSickness?: string
   medicalProof?: string
-  paymentStatus: 'PAID' | 'UNPAID'
+  paymentStatus?: 'PAID' | 'UNPAID'
   deanReviewedAt?: string
   deanReviewedBy?: string
   deanComments?: string
@@ -41,7 +43,16 @@ interface LeaveApplication {
     leave_type_id: number
     name: string
     description?: string
-  }
+  } | null
+  // Travel order specific fields
+  destination?: string
+  purpose?: string
+  transportationFee?: number
+  seminarConferenceFee?: number
+  mealsAccommodations?: number
+  totalCashRequested?: number
+  remarks?: string
+  supportingDocuments?: string
   user: {
     name: string
     email: string
@@ -127,8 +138,8 @@ export default function FinanceApplicationsPage() {
     router.push(`/finance/applications/${application.id}`)
   }
 
-  const handleApprove = async (applicationId: number) => {
-    setIsApproving(applicationId)
+  const handleApprove = async (applicationId: string) => {
+    setIsApproving(parseInt(applicationId.split('_')[1]))
     try {
       const res = await fetch(`/api/finance/applications/${applicationId}/approve`, {
         method: 'POST',
@@ -162,10 +173,10 @@ export default function FinanceApplicationsPage() {
     }
   }
 
-  const handleReject = async (applicationId: number) => {
+  const handleReject = async (applicationId: string) => {
     if (!rejectionReason.trim()) return
     
-    setIsRejecting(applicationId)
+    setIsRejecting(parseInt(applicationId.split('_')[1]))
     try {
       const res = await fetch(`/api/finance/applications/${applicationId}/reject`, {
         method: 'POST',
@@ -306,24 +317,52 @@ export default function FinanceApplicationsPage() {
                       <p className="text-xs text-gray-400">
                         Applied on {formatDate(application.appliedAt)}
                       </p>
-                      <p className="text-xs text-gray-500">
-                        {application.numberOfDays} days • {application.hours} hours
-                      </p>
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-1">
-                        <span className="text-xs text-gray-500">
-                          {application.leaveType?.name || 'N/A'}
-                        </span>
-                        <Badge className={application.paymentStatus === 'PAID' ? 'bg-green-100 text-green-800 text-xs' : 'bg-red-100 text-red-800 text-xs'}>
-                          {application.paymentStatus}
-                        </Badge>
-                        <span className="text-xs text-gray-500">
-                          {application.user.department?.name || 'No department'}
-                        </span>
-                      </div>
-                      {application.reason && (
-                        <p className="text-xs text-gray-600 mt-1 break-words">
-                          Reason: {application.reason.substring(0, 100)}...
-                        </p>
+                      {application.travel_order_id ? (
+                        // Travel Order Display
+                        <>
+                          <p className="text-xs text-gray-500">
+                            Destination: {application.destination}
+                          </p>
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-1">
+                            <span className="text-xs text-gray-500">
+                              Travel Order
+                            </span>
+                            <Badge className="bg-blue-100 text-blue-800 text-xs">
+                              ₱{application.totalCashRequested || 0}
+                            </Badge>
+                            <span className="text-xs text-gray-500">
+                              {application.user.department?.name || 'No department'}
+                            </span>
+                          </div>
+                          {application.purpose && (
+                            <p className="text-xs text-gray-600 mt-1 break-words">
+                              Purpose: {application.purpose.substring(0, 100)}...
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        // Leave Application Display
+                        <>
+                          <p className="text-xs text-gray-500">
+                            {application.numberOfDays} days • {application.hours} hours
+                          </p>
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-1">
+                            <span className="text-xs text-gray-500">
+                              {application.leaveType?.name || 'N/A'}
+                            </span>
+                            <Badge className={application.paymentStatus === 'PAID' ? 'bg-green-100 text-green-800 text-xs' : 'bg-red-100 text-red-800 text-xs'}>
+                              {application.paymentStatus}
+                            </Badge>
+                            <span className="text-xs text-gray-500">
+                              {application.user.department?.name || 'No department'}
+                            </span>
+                          </div>
+                          {application.reason && (
+                            <p className="text-xs text-gray-600 mt-1 break-words">
+                              Reason: {application.reason.substring(0, 100)}...
+                            </p>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
@@ -340,25 +379,25 @@ export default function FinanceApplicationsPage() {
                     {canApproveOrReject(application.status) && (
                       <div className="flex items-center gap-2 ml-2">
                         <Button 
-                          onClick={() => handleApprove(application.leave_application_id)}
-                          disabled={isApproving === application.leave_application_id}
+                          onClick={() => handleApprove(application.id)}
+                          disabled={isApproving === (application.leave_application_id || application.travel_order_id)}
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 w-full sm:w-auto"
                         >
-                          {isApproving === application.leave_application_id ? (
+                          {isApproving === (application.leave_application_id || application.travel_order_id) ? (
                             <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
                           ) : (
                             <Check className="h-3 w-3" />
                           )}
                         </Button>
                         <Button 
-                          onClick={() => setShowRejectDialog(application.leave_application_id)}
-                          disabled={isRejecting === application.leave_application_id}
+                          onClick={() => setShowRejectDialog(application.leave_application_id || application.travel_order_id)}
+                          disabled={isRejecting === (application.leave_application_id || application.travel_order_id)}
                           size="sm"
                           variant="destructive"
                           className="w-full sm:w-auto"
                         >
-                          {isRejecting === application.leave_application_id ? (
+                          {isRejecting === (application.leave_application_id || application.travel_order_id) ? (
                             <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
                           ) : (
                             <X className="h-3 w-3" />
@@ -402,7 +441,14 @@ export default function FinanceApplicationsPage() {
               </Button>
               <Button
                 variant="destructive"
-                onClick={() => handleReject(showRejectDialog)}
+                onClick={() => {
+                  const application = applicationsData?.applications.find(app => 
+                    (app.leave_application_id === showRejectDialog) || (app.travel_order_id === showRejectDialog)
+                  )
+                  if (application) {
+                    handleReject(application.id)
+                  }
+                }}
                 disabled={isRejecting === showRejectDialog || !rejectionReason.trim()}
               >
                 {isRejecting === showRejectDialog ? (

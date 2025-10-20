@@ -284,6 +284,11 @@ export default function DeanLeaveApplicationPage() {
     expectedReturn: string;
     purpose: string;
     destination: string;
+    transportationFee: number;
+    seminarConferenceFee: number;
+    mealsAccommodations: number;
+    totalCashRequested: number;
+    remarks?: string;
     supportingDocuments?: File;
   }) => {
     setIsLoading(true)

@@ -46,6 +46,11 @@ export async function POST(request: NextRequest) {
       dateOfTravel,
       expectedReturn,
       purpose,
+      transportationFee,
+      seminarConferenceFee,
+      mealsAccommodations,
+      totalCashRequested,
+      remarks,
       supportingDocuments
     } = body
 
@@ -62,11 +67,11 @@ export async function POST(request: NextRequest) {
         purpose: purpose, // Required field for travel orders
         dateOfTravel: new Date(dateOfTravel),
         expectedReturn: new Date(expectedReturn),
-        transportationFee: 0,
-        seminarConferenceFee: 0,
-        mealsAccommodations: 0,
-        totalCashRequested: 0,
-        remarks: purpose, // Optional remarks field
+        transportationFee: transportationFee || 0,
+        seminarConferenceFee: seminarConferenceFee || 0,
+        mealsAccommodations: mealsAccommodations || 0,
+        totalCashRequested: totalCashRequested || 0,
+        remarks: remarks || purpose, // Use remarks if provided, otherwise use purpose
         supportingDocuments: supportingDocuments || null,
         status: 'DEAN_APPROVED', // Automatically approved by dean
         appliedAt: new Date(),

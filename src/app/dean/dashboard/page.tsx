@@ -38,6 +38,20 @@ interface DashboardStats {
   }>
 }
 
+interface PendingRejection {
+  id: string
+  type: 'leave' | 'travel'
+  applicantName: string
+  applicantEmail: string
+  leaveType: string
+  startDate: string
+  endDate: string
+  appliedAt: string
+  updatedAt: string
+  rejectionReason: string
+  department: string
+}
+
 export default function DeanDashboardPage() {
   const { data: session, status } = useSession()
   const [stats, setStats] = useState<DashboardStats>({
@@ -50,6 +64,8 @@ export default function DeanDashboardPage() {
     recentApplications: []
   })
   const [isLoading, setIsLoading] = useState(true)
+  const [pendingRejections, setPendingRejections] = useState<PendingRejection[]>([])
+  const [isAcknowledging, setIsAcknowledging] = useState<string | null>(null)
   const router = useRouter()
 
   // Redirect non-dean users
@@ -102,8 +118,52 @@ export default function DeanDashboardPage() {
         setIsLoading(false)
       }
     }
+
+    const loadPendingRejections = async () => {
+      try {
+        const res = await fetch('/api/dean/pending-rejections')
+        if (res.ok) {
+          const data = await res.json()
+          if (data.success) {
+            setPendingRejections(data.pendingRejections || [])
+          }
+        }
+      } catch (error) {
+        console.error('Error loading pending rejections:', error)
+      }
+    }
+
     loadStats()
+    loadPendingRejections()
   }, [])
+
+  // Function to acknowledge rejection and notify teacher
+  const handleAcknowledgeRejection = async (rejectionId: string) => {
+    setIsAcknowledging(rejectionId)
+    try {
+      const response = await fetch(`/api/dean/applications/${rejectionId}/acknowledge-rejection`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        // Remove the acknowledged rejection from the list
+        setPendingRejections(prev => prev.filter(rejection => rejection.id !== rejectionId))
+        // Show success message (you can add toast notification here)
+        alert('Rejection acknowledged and applicant notified successfully!')
+      } else {
+        const error = await response.json()
+        alert(`Error: ${error.error}`)
+      }
+    } catch (error) {
+      console.error('Error acknowledging rejection:', error)
+      alert('Failed to acknowledge rejection. Please try again.')
+    } finally {
+      setIsAcknowledging(null)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -180,6 +240,71 @@ export default function DeanDashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Pending Rejections Requiring Acknowledgment */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <AlertCircle className="h-5 w-5 text-orange-600" />
+            Pending Rejections Requiring Acknowledgment
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-sm text-muted-foreground mb-4">
+            Applications that were rejected by Finance and require your acknowledgment before notifying the applicant.
+          </div>
+          <div className="space-y-3">
+            {pendingRejections.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>No pending rejections requiring acknowledgment</p>
+              </div>
+            ) : (
+              pendingRejections.map((rejection) => (
+                <div key={rejection.id} className="border rounded-lg p-4 bg-orange-50 border-orange-200">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge variant="destructive" className="text-xs">
+                          {rejection.type === 'travel' ? 'Travel Order' : 'Leave Application'}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          ID: {rejection.id}
+                        </Badge>
+                      </div>
+                      <h4 className="font-medium text-sm mb-1">
+                        {rejection.applicantName} - {rejection.leaveType}
+                      </h4>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        Applied: {new Date(rejection.appliedAt).toLocaleDateString()}
+                      </p>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        <strong>Finance Rejection Reason:</strong> {rejection.rejectionReason}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="default"
+                      onClick={() => handleAcknowledgeRejection(rejection.id)}
+                      disabled={isAcknowledging === rejection.id}
+                      className="ml-4"
+                    >
+                      {isAcknowledging === rejection.id ? (
+                        <>
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                          Processing...
+                        </>
+                      ) : (
+                        'Acknowledge & Notify Teacher'
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Quick Actions */}
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">

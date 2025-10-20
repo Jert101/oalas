@@ -191,6 +191,10 @@ model LeaveApplication {
   deanReviewedBy       String?
   deanComments         String?           @db.Text
   deanRejectionReason  String?           @db.Text
+  // Dean acknowledgment fields for finance rejections
+  deanAcknowledgedRejection Boolean?     @default(false)
+  deanAcknowledgedAt        DateTime?
+  deanAcknowledgedBy        String?
 
   @@index([calendar_period_id], map: "leave_applications_calendar_period_id_fkey")
   @@index([reviewedBy], map: "leave_applications_reviewedBy_fkey")
@@ -231,6 +235,10 @@ model TravelOrder {
   deanReviewedBy       String?
   deanComments         String?           @db.Text
   deanRejectionReason  String?           @db.Text
+  // Dean acknowledgment fields for finance rejections
+  deanAcknowledgedRejection Boolean?     @default(false)
+  deanAcknowledgedAt        DateTime?
+  deanAcknowledgedBy        String?
 
   @@index([calendar_period_id], map: "travel_orders_calendar_period_id_fkey")
   @@index([reviewedBy], map: "travel_orders_reviewedBy_fkey")

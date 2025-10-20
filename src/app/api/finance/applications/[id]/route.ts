@@ -152,7 +152,10 @@ export async function GET(
     // For travel orders, leaveType is null; for leave applications, it's already included
     const applicationWithLeaveType = {
       ...application,
-      leaveType: isTravelOrder ? null : application.leaveType
+      leaveType: isTravelOrder ? null : application.leaveType,
+      // Map travel order date fields to expected format for frontend compatibility
+      startDate: isTravelOrder ? application.dateOfTravel : application.startDate,
+      endDate: isTravelOrder ? application.expectedReturn : application.endDate
     }
 
     console.log('✅ Finance Application Detail API - Successfully returning application')

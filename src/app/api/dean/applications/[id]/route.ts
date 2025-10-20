@@ -213,7 +213,10 @@ export async function GET(
       leaveType: leaveType,
       // Ensure both ID fields are available for frontend compatibility
       travel_order_id: isTravelOrder ? application.travel_order_id : undefined,
-      leave_application_id: isTravelOrder ? undefined : application.leave_application_id
+      leave_application_id: isTravelOrder ? undefined : application.leave_application_id,
+      // Map travel order date fields to expected format for frontend compatibility
+      startDate: isTravelOrder ? application.dateOfTravel : application.startDate,
+      endDate: isTravelOrder ? application.expectedReturn : application.endDate
     }
 
     console.log('🔍 Dean Application Detail API - Returning application with IDs:', {

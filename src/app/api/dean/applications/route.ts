@@ -160,7 +160,10 @@ export async function GET(request: NextRequest) {
       ...order,
       id: `travel_${order.travel_order_id}`,
       type: 'travel' as const,
-      leaveType: null // Travel orders don't have leave types
+      leaveType: null, // Travel orders don't have leave types
+      // Map travel order date fields to expected format
+      startDate: order.dateOfTravel,
+      endDate: order.expectedReturn
     }))
 
     // Combine both types of applications

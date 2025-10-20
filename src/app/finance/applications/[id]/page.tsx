@@ -165,8 +165,11 @@ export default function FinanceApplicationDetailPage() {
     
     setIsApproving(true)
     try {
-      // Use the formatted ID from the URL parameter
-      const res = await fetch(`/api/finance/applications/${params.id}/approve`, {
+      // Use the correct formatted ID based on application type
+      const applicationId = application.travel_order_id 
+        ? `travel_${application.travel_order_id}` 
+        : `leave_${application.leave_application_id}`
+      const res = await fetch(`/api/finance/applications/${applicationId}/approve`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -197,8 +200,11 @@ export default function FinanceApplicationDetailPage() {
     
     setIsRejecting(true)
     try {
-      // Use the formatted ID from the URL parameter
-      const res = await fetch(`/api/finance/applications/${params.id}/reject`, {
+      // Use the correct formatted ID based on application type
+      const applicationId = application.travel_order_id 
+        ? `travel_${application.travel_order_id}` 
+        : `leave_${application.leave_application_id}`
+      const res = await fetch(`/api/finance/applications/${applicationId}/reject`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { useRealtimeNotifications } from "@/hooks/use-realtime"
+import { useSession } from "next-auth/react"
 
 interface Notification {
   id: string
@@ -30,9 +31,10 @@ export default function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const router = useRouter()
+  const { data: session } = useSession()
   
-  // Use real-time notifications hook
-  const { notifications: realtimeNotifications, isConnected } = useRealtimeNotifications()
+  // Use real-time notifications hook with user ID
+  const { notifications: realtimeNotifications, isConnected } = useRealtimeNotifications(session?.user?.id)
 
   useEffect(() => {
     // Load initial notifications
@@ -54,7 +56,23 @@ export default function NotificationBell() {
   // Update notifications when real-time data comes in
   useEffect(() => {
     if (realtimeNotifications && realtimeNotifications.length > 0) {
-      setNotifications(realtimeNotifications)
+      // Convert realtime notifications to our format and merge with existing
+      const newRealtimeNotifications = realtimeNotifications.map((rtNotification: any) => ({
+        id: rtNotification.id || `realtime_${Date.now()}`,
+        title: rtNotification.title || 'New Notification',
+        message: rtNotification.message || rtNotification.data?.message || 'You have a new notification',
+        type: rtNotification.type || 'info',
+        timestamp: rtNotification.timestamp || new Date().toISOString(),
+        isRead: rtNotification.isRead || false,
+        link: rtNotification.link || rtNotification.data?.link
+      }))
+
+      // Merge with existing notifications, avoiding duplicates
+      setNotifications(prev => {
+        const existingIds = new Set(prev.map(n => n.id))
+        const newNotifications = newRealtimeNotifications.filter(n => !existingIds.has(n.id))
+        return [...newNotifications, ...prev].slice(0, 50) // Keep last 50
+      })
     }
   }, [realtimeNotifications])
 

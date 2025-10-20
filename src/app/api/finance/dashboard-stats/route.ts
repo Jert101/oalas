@@ -95,7 +95,7 @@ export async function GET(req: NextRequest) {
       
       // Applications by department
       prisma.leaveApplication.groupBy({
-        by: ['user_id'],
+        by: ['users_id'],
         _count: {
           leave_application_id: true
         }

@@ -53,7 +53,7 @@ async function sendRealtimeApplicationUpdate(userId: string, application: any, u
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -65,8 +65,10 @@ export async function POST(
       )
     }
 
+    const resolvedParams = await params
+    
     // Handle different ID formats: "leave_24", "travel_5", or just "24"
-    const originalId = params.id
+    const originalId = resolvedParams.id
     let applicationId: number
     let isTravelOrder = false
     

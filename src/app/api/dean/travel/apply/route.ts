@@ -59,13 +59,14 @@ export async function POST(request: NextRequest) {
       data: {
         users_id: user.users_id,
         destination: destination,
-        startDate: new Date(dateOfTravel),
-        endDate: new Date(expectedReturn),
+        purpose: purpose, // Required field for travel orders
+        dateOfTravel: new Date(dateOfTravel),
+        expectedReturn: new Date(expectedReturn),
         transportationFee: 0,
         seminarConferenceFee: 0,
         mealsAccommodations: 0,
         totalCashRequested: 0,
-        remarks: purpose,
+        remarks: purpose, // Optional remarks field
         supportingDocuments: supportingDocuments || null,
         status: 'DEAN_APPROVED', // Automatically approved by dean
         appliedAt: new Date(),

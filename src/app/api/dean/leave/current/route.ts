@@ -24,9 +24,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    // Verify user is a Dean/Program Head
-    if (user.role?.name !== "Dean/Program Head") {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 })
+    // Verify user is a Dean/Program Head or has department head privileges
+    const allowedRoles = ["Dean/Program Head", "Department Head"]
+    const isAllowed = user.role?.name && allowedRoles.includes(user.role.name)
+    const isDepartmentHead = user.isDepartmentHead === true
+    
+    if (!isAllowed && !isDepartmentHead) {
+      return NextResponse.json({ error: "Access denied. Dean/Program Head or Department Head role required." }, { status: 403 })
     }
 
     // Get the most recent application (leave or travel) for this dean

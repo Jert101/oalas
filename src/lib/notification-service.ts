@@ -1,6 +1,36 @@
 import { prisma } from "@/lib/prisma"
 import { sendEmail, emailTemplates } from "@/lib/email-service-simple"
 
+// Helper function to generate role-specific notification links
+async function getRoleSpecificLink(userId: string, applicationId: number): Promise<string> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { users_id: userId },
+      include: { role: true }
+    })
+    
+    if (user?.role?.name) {
+      const roleName = user.role.name.toLowerCase()
+      
+      if (roleName.includes('teacher') || roleName.includes('instructor')) {
+        return `/teacher/leave/${applicationId}`
+      } else if (roleName.includes('dean') || roleName.includes('program head') || roleName.includes('department head')) {
+        return `/dean/applications/${applicationId}`
+      } else if (roleName.includes('finance')) {
+        return `/finance/applications/${applicationId}`
+      } else if (roleName.includes('non-teaching') || roleName.includes('staff')) {
+        return `/non-teaching-staff/leave/${applicationId}`
+      } else if (roleName.includes('office head')) {
+        return `/office-head/applications/${applicationId}`
+      }
+    }
+  } catch (error) {
+    console.error('Error determining user role for notification link:', error)
+  }
+  
+  return `/applications/${applicationId}` // fallback
+}
+
 // Import WebSocket for server-side usage
 let WebSocket: any
 if (typeof window === 'undefined') {
@@ -154,12 +184,14 @@ export async function createNotification({
 
 // Helper functions for common notification types
 export async function notifyLeaveApplicationSubmitted(userId: string, applicationId: number, leaveType?: string) {
+  const link = await getRoleSpecificLink(userId, applicationId)
+  
   return createNotification({
     userId,
     title: 'Leave Application Submitted',
     message: 'Your leave application has been submitted successfully and is pending approval.',
     type: 'SUCCESS',
-    link: `/teacher/leave/${applicationId}`,
+    link: link,
     sendEmail: true,
     emailTemplate: 'leaveApplicationSubmitted',
     emailData: {
@@ -170,12 +202,14 @@ export async function notifyLeaveApplicationSubmitted(userId: string, applicatio
 }
 
 export async function notifyLeaveApplicationApproved(userId: string, applicationId: number, approverName?: string, leaveType?: string) {
+  const link = await getRoleSpecificLink(userId, applicationId)
+  
   return createNotification({
     userId,
     title: 'Leave Application Approved',
     message: 'Your leave application has been approved.',
     type: 'SUCCESS',
-    link: `/teacher/leave/${applicationId}`,
+    link: link,
     sendEmail: true,
     emailTemplate: 'leaveApplicationApproved',
     emailData: {
@@ -187,12 +221,14 @@ export async function notifyLeaveApplicationApproved(userId: string, application
 }
 
 export async function notifyLeaveApplicationRejected(userId: string, applicationId: number, reason: string, approverName?: string, leaveType?: string) {
+  const link = await getRoleSpecificLink(userId, applicationId)
+  
   return createNotification({
     userId,
     title: 'Leave Application Rejected',
     message: `Your leave application has been rejected. Reason: ${reason}`,
     type: 'ERROR',
-    link: `/teacher/leave/${applicationId}`,
+    link: link,
     sendEmail: true,
     emailTemplate: 'leaveApplicationRejected',
     emailData: {
@@ -231,9 +267,7 @@ export async function notifySystemMessage(userId: string, title: string, message
 
 // Finance approval/rejection notifications
 export async function notifyFinanceApproval(userId: string, applicationId: number, leaveType?: string) {
-  // Determine the correct link based on user role
-  // For now, we'll use a generic link that works for all roles
-  const link = `/applications/${applicationId}`
+  const link = await getRoleSpecificLink(userId, applicationId)
   
   return createNotification({
     userId,
@@ -263,12 +297,14 @@ export async function notifyFinanceRejectionToDean(deanUserId: string, teacherNa
 }
 
 export async function notifyFinanceRejectionToApplicant(userId: string, applicationId: number, rejectionReason: string, leaveType?: string) {
+  const link = await getRoleSpecificLink(userId, applicationId)
+  
   return createNotification({
     userId,
     title: 'Leave Application Rejected',
     message: `Your leave application has been rejected by Finance. Reason: ${rejectionReason}`,
     type: 'ERROR',
-    link: `/teacher/leave/${applicationId}`,
+    link: link,
     sendEmail: true,
     emailTemplate: 'leaveApplicationRejected',
     emailData: {

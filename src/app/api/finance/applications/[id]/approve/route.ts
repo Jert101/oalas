@@ -65,7 +65,22 @@ export async function POST(
       )
     }
 
-    const applicationId = parseInt(params.id)
+    // Handle different ID formats: "leave_24", "travel_5", or just "24"
+    const originalId = params.id
+    let applicationId: number
+    let isTravelOrder = false
+    
+    if (originalId.startsWith('leave_')) {
+      applicationId = parseInt(originalId.replace('leave_', ''))
+      isTravelOrder = false
+    } else if (originalId.startsWith('travel_')) {
+      applicationId = parseInt(originalId.replace('travel_', ''))
+      isTravelOrder = true
+    } else {
+      applicationId = parseInt(originalId)
+      isTravelOrder = false
+    }
+
     if (isNaN(applicationId)) {
       return NextResponse.json(
         { success: false, error: 'Invalid application ID' },
@@ -73,12 +88,23 @@ export async function POST(
       )
     }
 
-    // Get the application
-    const application = await prisma.leaveApplication.findUnique({
-      where: {
-        leave_application_id: applicationId
-      }
-    })
+    // Get the application (handle both leave and travel orders)
+    let application
+    if (isTravelOrder) {
+      // For travel orders, update the travel order status
+      application = await prisma.travelOrder.findUnique({
+        where: {
+          travel_order_id: applicationId
+        }
+      })
+    } else {
+      // For leave applications
+      application = await prisma.leaveApplication.findUnique({
+        where: {
+          leave_application_id: applicationId
+        }
+      })
+    }
 
     if (!application) {
       return NextResponse.json(
@@ -96,56 +122,101 @@ export async function POST(
     }
 
     // Update the application status to APPROVED
-    const updatedApplication = await prisma.leaveApplication.update({
-      where: {
-        leave_application_id: applicationId
-      },
-      data: {
-        status: 'APPROVED',
-        reviewedAt: new Date(),
-        reviewedBy: session.user.id,
-        comments: 'Approved by Finance Officer'
-      },
-      include: {
-        user: {
-          select: {
-            name: true,
-            email: true,
-            profilePicture: true,
-            department: {
-              select: {
-                name: true
+    let updatedApplication
+    if (isTravelOrder) {
+      updatedApplication = await prisma.travelOrder.update({
+        where: {
+          travel_order_id: applicationId
+        },
+        data: {
+          status: 'APPROVED',
+          reviewedAt: new Date(),
+          reviewedBy: session.user.id,
+          comments: 'Approved by Finance Officer'
+        },
+        include: {
+          user: {
+            select: {
+              name: true,
+              email: true,
+              profilePicture: true,
+              department: {
+                select: {
+                  name: true
+                }
               }
             }
-          }
-        },
-        reviewer: {
-          select: {
-            name: true,
-            email: true
-          }
-        },
-        calendarPeriod: {
-          select: {
-            academicYear: true,
-            startDate: true,
-            endDate: true
+          },
+          reviewer: {
+            select: {
+              name: true,
+              email: true
+            }
+          },
+          calendarPeriod: {
+            select: {
+              academicYear: true,
+              startDate: true,
+              endDate: true
+            }
           }
         }
-      }
-    })
+      })
+    } else {
+      updatedApplication = await prisma.leaveApplication.update({
+        where: {
+          leave_application_id: applicationId
+        },
+        data: {
+          status: 'APPROVED',
+          reviewedAt: new Date(),
+          reviewedBy: session.user.id,
+          comments: 'Approved by Finance Officer'
+        },
+        include: {
+          user: {
+            select: {
+              name: true,
+              email: true,
+              profilePicture: true,
+              department: {
+                select: {
+                  name: true
+                }
+              }
+            }
+          },
+          reviewer: {
+            select: {
+              name: true,
+              email: true
+            }
+          },
+          calendarPeriod: {
+            select: {
+              academicYear: true,
+              startDate: true,
+              endDate: true
+            }
+          }
+        }
+      })
+    }
 
-    // Get leave type information
-    const leaveType = await prisma.leave_types.findUnique({
-      where: {
-        leave_type_id: updatedApplication.leave_type_id
-      },
-      select: {
-        leave_type_id: true,
-        name: true,
-        description: true
-      }
-    })
+    // Get leave type information (only for leave applications)
+    let leaveType = null
+    if (!isTravelOrder && updatedApplication.leave_type_id) {
+      leaveType = await prisma.leave_types.findUnique({
+        where: {
+          leave_type_id: updatedApplication.leave_type_id
+        },
+        select: {
+          leave_type_id: true,
+          name: true,
+          description: true
+        }
+      })
+    }
 
     // Add leave type information to application
     const applicationWithLeaveType = {
@@ -153,17 +224,20 @@ export async function POST(
       leaveType: leaveType || null
     }
 
-    // Deduct leave balance only when both dean and finance approve
-    // This ensures balance is only deducted for fully approved applications
-    try {
-      console.log('🔍 Finance Approval - Starting leave balance deduction process')
-      console.log('🔍 Finance Approval - Application details:', {
-        applicationId: updatedApplication.leave_application_id,
-        userId: updatedApplication.users_id,
-        leaveTypeId: updatedApplication.leave_type_id,
-        numberOfDays: updatedApplication.numberOfDays,
-        calendarPeriodId: updatedApplication.calendar_period_id
-      })
+    // Deduct leave balance only for leave applications (not travel orders)
+    // Travel orders don't affect leave balances
+    if (!isTravelOrder) {
+      try {
+        console.log('🔍 Finance Approval - Starting leave balance deduction process')
+        const appId = updatedApplication.leave_application_id || updatedApplication.travel_order_id
+        console.log('🔍 Finance Approval - Application details:', {
+          applicationId: appId,
+          userId: updatedApplication.users_id,
+          leaveTypeId: updatedApplication.leave_type_id,
+          numberOfDays: updatedApplication.numberOfDays,
+          calendarPeriodId: updatedApplication.calendar_period_id,
+          isTravelOrder: isTravelOrder
+        })
       
       // Get current calendar period to check if it's summer (shared balance)
       const currentPeriod = await prisma.calendarPeriod.findFirst({
@@ -272,9 +346,12 @@ export async function POST(
       } else {
         console.log('⚠️ Finance Approval - No current period found, skipping leave balance deduction')
       }
-    } catch (balanceError) {
-      console.error('❌ Finance Approval - Error during leave balance deduction:', balanceError)
-      // Don't fail the entire approval if balance deduction fails
+      } catch (balanceError) {
+        console.error('❌ Finance Approval - Error during leave balance deduction:', balanceError)
+        // Don't fail the entire approval if balance deduction fails
+      }
+    } else {
+      console.log('🔍 Finance Approval - Travel order approved, no leave balance deduction needed')
     }
 
     // Send notification and email to applicant
@@ -282,7 +359,7 @@ export async function POST(
       await notifyFinanceApproval(
         application.users_id,  // Fixed: was application.userId
         applicationId,
-        leaveType?.name || 'Leave'  // Fixed: use leaveType from the query above
+        isTravelOrder ? 'Travel Order' : (leaveType?.name || 'Leave')
       )
       
       console.log(`✅ Finance approval notifications sent to ${application.user.name}`)

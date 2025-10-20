@@ -64,7 +64,22 @@ export async function POST(
       )
     }
 
-    const applicationId = parseInt(params.id)
+    // Handle different ID formats: "leave_24", "travel_5", or just "24"
+    const originalId = params.id
+    let applicationId: number
+    let isTravelOrder = false
+    
+    if (originalId.startsWith('leave_')) {
+      applicationId = parseInt(originalId.replace('leave_', ''))
+      isTravelOrder = false
+    } else if (originalId.startsWith('travel_')) {
+      applicationId = parseInt(originalId.replace('travel_', ''))
+      isTravelOrder = true
+    } else {
+      applicationId = parseInt(originalId)
+      isTravelOrder = false
+    }
+
     if (isNaN(applicationId)) {
       return NextResponse.json(
         { success: false, error: 'Invalid application ID' },
@@ -82,12 +97,21 @@ export async function POST(
       )
     }
 
-    // Get the application
-    const application = await prisma.leaveApplication.findUnique({
-      where: {
-        leave_application_id: applicationId
-      }
-    })
+    // Get the application (handle both leave and travel orders)
+    let application
+    if (isTravelOrder) {
+      application = await prisma.travelOrder.findUnique({
+        where: {
+          travel_order_id: applicationId
+        }
+      })
+    } else {
+      application = await prisma.leaveApplication.findUnique({
+        where: {
+          leave_application_id: applicationId
+        }
+      })
+    }
 
     if (!application) {
       return NextResponse.json(
@@ -105,56 +129,101 @@ export async function POST(
     }
 
     // Update the application status to DENIED
-    const updatedApplication = await prisma.leaveApplication.update({
-      where: {
-        leave_application_id: applicationId
-      },
-      data: {
-        status: 'DENIED',
-        reviewedAt: new Date(),
-        reviewedBy: session.user.id,
-        comments: `Rejected by Finance Officer: ${rejectionReason.trim()}`
-      },
-      include: {
-        user: {
-          select: {
-            name: true,
-            email: true,
-            profilePicture: true,
-            department: {
-              select: {
-                name: true
+    let updatedApplication
+    if (isTravelOrder) {
+      updatedApplication = await prisma.travelOrder.update({
+        where: {
+          travel_order_id: applicationId
+        },
+        data: {
+          status: 'DENIED',
+          reviewedAt: new Date(),
+          reviewedBy: session.user.id,
+          comments: `Rejected by Finance Officer: ${rejectionReason.trim()}`
+        },
+        include: {
+          user: {
+            select: {
+              name: true,
+              email: true,
+              profilePicture: true,
+              department: {
+                select: {
+                  name: true
+                }
               }
             }
-          }
-        },
-        reviewer: {
-          select: {
-            name: true,
-            email: true
-          }
-        },
-        calendarPeriod: {
-          select: {
-            academicYear: true,
-            startDate: true,
-            endDate: true
+          },
+          reviewer: {
+            select: {
+              name: true,
+              email: true
+            }
+          },
+          calendarPeriod: {
+            select: {
+              academicYear: true,
+              startDate: true,
+              endDate: true
+            }
           }
         }
-      }
-    })
+      })
+    } else {
+      updatedApplication = await prisma.leaveApplication.update({
+        where: {
+          leave_application_id: applicationId
+        },
+        data: {
+          status: 'DENIED',
+          reviewedAt: new Date(),
+          reviewedBy: session.user.id,
+          comments: `Rejected by Finance Officer: ${rejectionReason.trim()}`
+        },
+        include: {
+          user: {
+            select: {
+              name: true,
+              email: true,
+              profilePicture: true,
+              department: {
+                select: {
+                  name: true
+                }
+              }
+            }
+          },
+          reviewer: {
+            select: {
+              name: true,
+              email: true
+            }
+          },
+          calendarPeriod: {
+            select: {
+              academicYear: true,
+              startDate: true,
+              endDate: true
+            }
+          }
+        }
+      })
+    }
 
-    // Get leave type information
-    const leaveType = await prisma.leave_types.findUnique({
-      where: {
-        leave_type_id: updatedApplication.leave_type_id
-      },
-      select: {
-        leave_type_id: true,
-        name: true,
-        description: true
-      }
-    })
+    // Get leave type information (only for leave applications)
+    let leaveType = null
+    if (!isTravelOrder && updatedApplication.leave_type_id) {
+      leaveType = await prisma.leave_types.findUnique({
+        where: {
+          leave_type_id: updatedApplication.leave_type_id
+        },
+        select: {
+          leave_type_id: true,
+          name: true,
+          description: true
+        }
+      })
+    }
 
     // Add leave type information to application
     const applicationWithLeaveType = {
@@ -190,7 +259,7 @@ export async function POST(
     }
 
     // Send real-time application update
-    await sendRealtimeApplicationUpdate(application.userId, applicationWithLeaveType, 'update')
+    await sendRealtimeApplicationUpdate(application.users_id, applicationWithLeaveType, 'update')
 
     return NextResponse.json({
       success: true,

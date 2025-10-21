@@ -56,6 +56,16 @@ interface ApplicationData {
   reviewer?: string
   days: number
   reason: string
+  // Calendar period information
+  calendarPeriod?: {
+    calendar_period_id: number
+    academicYear: string
+    startDate: string
+    endDate: string
+    termType?: {
+      name: string
+    }
+  }
   // Travel order specific fields
   destination?: string
   purpose?: string
@@ -242,14 +252,17 @@ export default function DeanReportsPage() {
     }).format(amount)
   }
 
-  const getAcademicYearFromDate = (dateString: string) => {
-    const date = new Date(dateString)
+  const getAcademicYearFromApplication = (app: ApplicationData) => {
+    // Use the calendar period's academic year if available, otherwise fall back to date calculation
+    if (app.calendarPeriod?.academicYear) {
+      return app.calendarPeriod.academicYear
+    }
+    
+    // Fallback to date calculation if calendar period is not available
+    const date = new Date(app.appliedAt)
     const year = date.getFullYear()
     const month = date.getMonth() + 1 // 0-based month
     
-    // Academic year typically starts in June (month 6)
-    // If application is from June onwards, it's the current academic year
-    // If application is from January to May, it's the previous academic year
     if (month >= 6) {
       return `${year}-${year + 1}`
     } else {
@@ -292,10 +305,12 @@ export default function DeanReportsPage() {
     ]
 
     const csvData = applications.map(app => {
+      const academicYear = getAcademicYearFromApplication(app)
       console.log('🔍 Application data for CSV:', {
         users_id: app.user.users_id,
         appliedAt: app.appliedAt,
-        academicYear: getAcademicYearFromDate(app.appliedAt)
+        calendarPeriod: app.calendarPeriod,
+        academicYear: academicYear
       })
       
       return [
@@ -309,7 +324,7 @@ export default function DeanReportsPage() {
         app.endDate ? new Date(app.endDate).toLocaleDateString() : (app.expectedReturn ? new Date(app.expectedReturn).toLocaleDateString() : ''),
         app.days,
         new Date(app.appliedAt).toLocaleDateString(),
-        getAcademicYearFromDate(app.appliedAt),
+        academicYear,
         app.reviewedAt ? new Date(app.reviewedAt).toLocaleDateString() : '',
         app.reviewedBy || '',
         app.reason || app.purpose || '',
@@ -475,7 +490,7 @@ export default function DeanReportsPage() {
                     <td>${app.endDate ? new Date(app.endDate).toLocaleDateString() : ''}</td>
                     <td>${app.days}</td>
                     <td>${new Date(app.appliedAt).toLocaleDateString()}</td>
-                    <td>${getAcademicYearFromDate(app.appliedAt)}</td>
+                    <td>${getAcademicYearFromApplication(app)}</td>
                 </tr>
             `).join('')}
         </tbody>

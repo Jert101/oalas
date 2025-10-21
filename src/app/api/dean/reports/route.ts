@@ -117,10 +117,8 @@ export async function GET(req: NextRequest) {
       console.log('🔍 Applying leave type filter:', params.leaveType)
       console.log('🔍 Leave type filter type:', typeof params.leaveType)
       console.log('🔍 Parsed leave type ID:', parseInt(params.leaveType))
-      filters.leaveType = {
-        leave_type_id: parseInt(params.leaveType)
-      }
-      console.log('🔍 Leave type filter applied (relation):', filters.leaveType)
+      filters.leave_type_id = parseInt(params.leaveType)
+      console.log('🔍 Leave type filter applied (direct field):', filters.leave_type_id)
       console.log('🔍 Full filters object after leave type:', JSON.stringify(filters, null, 2))
     }
 

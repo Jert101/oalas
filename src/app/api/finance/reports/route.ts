@@ -107,6 +107,7 @@ export async function GET(req: NextRequest) {
             email: true,
             firstName: true,
             lastName: true,
+            profilePicture: true,
             department: {
               select: {
                 department_id: true,
@@ -164,6 +165,7 @@ export async function GET(req: NextRequest) {
             email: true,
             firstName: true,
             lastName: true,
+            profilePicture: true,
             department: {
               select: {
                 department_id: true,

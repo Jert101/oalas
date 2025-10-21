@@ -296,7 +296,6 @@ export default function DeanReportsPage() {
       'End Date',
       'Number of Days',
       'Applied Date',
-      'Academic Year',
       'Reviewed Date',
       'Reviewer',
       'Reason/Purpose',
@@ -306,16 +305,7 @@ export default function DeanReportsPage() {
       'Meals & Accommodations'
     ]
 
-    const csvData = applications.map(app => {
-      const academicYear = getAcademicYearFromApplication(app)
-      console.log('🔍 Application data for CSV:', {
-        users_id: app.user.users_id,
-        appliedAt: app.appliedAt,
-        calendarPeriod: app.calendarPeriod,
-        academicYear: academicYear
-      })
-      
-      return [
+    const csvData = applications.map(app => [
         app.user.users_id,
         app.user.name,
         app.user.department,
@@ -326,7 +316,6 @@ export default function DeanReportsPage() {
         app.endDate ? new Date(app.endDate).toLocaleDateString() : (app.expectedReturn ? new Date(app.expectedReturn).toLocaleDateString() : ''),
         app.days,
         new Date(app.appliedAt).toLocaleDateString(),
-        academicYear,
         app.reviewedAt ? new Date(app.reviewedAt).toLocaleDateString() : '',
         app.reviewedBy || '',
         app.reason || app.purpose || '',
@@ -477,7 +466,6 @@ export default function DeanReportsPage() {
                 <th>End Date</th>
                 <th>Days</th>
                 <th>Applied Date</th>
-                <th>Academic Year</th>
             </tr>
         </thead>
         <tbody>
@@ -492,7 +480,6 @@ export default function DeanReportsPage() {
                     <td>${app.endDate ? new Date(app.endDate).toLocaleDateString() : ''}</td>
                     <td>${app.days}</td>
                     <td>${new Date(app.appliedAt).toLocaleDateString()}</td>
-                    <td>${getAcademicYearFromApplication(app)}</td>
                 </tr>
             `).join('')}
         </tbody>

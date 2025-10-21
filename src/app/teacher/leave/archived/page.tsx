@@ -1,112 +1,204 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useSession } from "next-auth/react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { useState, useEffect, useCallback } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { 
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { 
+  FileText, 
+  Download,
+  Archive,
   Calendar, 
-  Clock,
+  Users,
   CheckCircle,
   XCircle,
-  Eye,
-  ArrowLeft,
-  FileText,
-  Archive
+  Clock,
+  Filter,
+  ChevronLeft,
+  ChevronRight,
+  XCircle as XIcon
 } from "lucide-react"
-import { useRouter } from "next/navigation"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 
 interface ArchivedApplication {
   id: string
-  leaveType: string
+  type: 'leave' | 'travel'
+  user: {
+    users_id: string
+    name: string
+    email: string
+    department: string
+    profilePicture?: string
+  }
+  leaveType?: string
   startDate: string
   endDate: string
-  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  status: 'APPROVED' | 'DENIED'
   appliedAt: string
+  reviewedAt: string
+  reviewedBy: string
+  days: number
   reason: string
-  numberOfDays: number
-  hours: number
-  comments?: string
-  paymentStatus: string
-  specificPurpose?: string
-  descriptionOfSickness?: string
+  calendarPeriod: {
+    calendar_period_id: number
   academicYear: string
-  termType: string
+    startDate: string
+    endDate: string
+    termType: {
+      name: string
+    }
+  }
+  // Travel order specific fields
+  destination?: string
+  purpose?: string
+  dateOfTravel?: string
+  expectedReturn?: string
+  transportationFee?: number
+  seminarConferenceFee?: number
+  mealsAccommodations?: number
+  totalCashRequested?: number
 }
 
 interface CalendarPeriod {
   calendar_period_id: number
   academicYear: string
+  startDate: string
+  endDate: string
   termType: {
     name: string
   }
-  startDate: string
-  endDate: string
-  applications: ArchivedApplication[]
+  applicationCount: number
+  approvedCount: number
+  deniedCount: number
 }
 
-export default function ArchivedPage() {
-  const { data: session } = useSession()
-  const router = useRouter()
-  const [archivedPeriods, setArchivedPeriods] = useState<CalendarPeriod[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [selectedApplication, setSelectedApplication] = useState<ArchivedApplication | null>(null)
-  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
+export default function TeacherArchivedPage() {
+  const [applications, setApplications] = useState<ArchivedApplication[]>([])
+  const [filteredApplications, setFilteredApplications] = useState<ArchivedApplication[]>([])
+  const [calendarPeriods, setCalendarPeriods] = useState<CalendarPeriod[]>([])
+  const [selectedCalendar, setSelectedCalendar] = useState<string>('all')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [typeFilter, setTypeFilter] = useState<string>('all')
+  const [isLoading, setIsLoading] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
+  const [itemsPerPage, setItemsPerPage] = useState(20)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetchArchivedData()
-  }, [])
-
-  const fetchArchivedData = async () => {
+  const loadCalendarPeriods = async () => {
     try {
-      setIsLoading(true)
-      const response = await fetch('/api/teacher/leave/archived')
+      const response = await fetch('/api/teacher/archive/calendar-periods')
+      if (response.ok) {
+        const data = await response.json()
+        setCalendarPeriods(data.calendarPeriods || [])
+      }
+    } catch (error) {
+      console.error('Error loading calendar periods:', error)
+    }
+  }
+
+  const loadArchivedApplications = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const queryParams = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: itemsPerPage.toString(),
+        ...(selectedCalendar !== 'all' && { calendarPeriod: selectedCalendar }),
+        ...(statusFilter !== 'all' && { status: statusFilter }),
+        ...(typeFilter !== 'all' && { type: typeFilter })
+      })
+
+      const response = await fetch(`/api/teacher/archive/applications?${queryParams}`)
+      
+      if (response.status === 401) {
+        setErrorMessage('Authentication required. Please login with a teacher account.')
+        setApplications([])
+        setTotalCount(0)
+        setTotalPages(1)
+        return
+      }
       
       if (response.ok) {
         const data = await response.json()
-        setArchivedPeriods(data.periods || [])
+        setApplications(data.applications || [])
+        setTotalCount(data.totalCount || 0)
+        setTotalPages(Math.ceil((data.totalCount || 0) / itemsPerPage))
+        setErrorMessage(null)
       } else {
-        console.error('Error fetching archived data:', response.status)
+        setErrorMessage(`Error loading archived applications: ${response.statusText}`)
+        setApplications([])
+        setTotalCount(0)
+        setTotalPages(1)
       }
-    } catch (error) {
-      console.error('Error fetching archived data:', error)
+    } catch (error: any) {
+      setErrorMessage(`Network error: ${error?.message || 'Unknown error'}`)
+      setApplications([])
+      setTotalCount(0)
+      setTotalPages(1)
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [currentPage, itemsPerPage, selectedCalendar, statusFilter, typeFilter])
+
+  // Load calendar periods on component mount
+  useEffect(() => {
+    loadCalendarPeriods()
+  }, [])
+
+  // Load applications when filters change
+  useEffect(() => {
+    loadArchivedApplications()
+  }, [loadArchivedApplications])
+
+  // Apply client-side filters
+  useEffect(() => {
+    let filtered = [...applications]
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(app => app.status === statusFilter)
+    }
+
+    // Type filter
+    if (typeFilter !== 'all') {
+      filtered = filtered.filter(app => app.type === typeFilter)
+    }
+
+    setFilteredApplications(filtered)
+  }, [applications, statusFilter, typeFilter])
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'APPROVED':
-        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Approved</Badge>
-      case 'REJECTED':
-        return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Rejected</Badge>
-      case 'PENDING':
-        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Pending</Badge>
-      default:
-        return <Badge variant="secondary">{status}</Badge>
+    const statusConfig = {
+      'APPROVED': { color: 'bg-green-100 text-green-800', label: 'Approved', icon: CheckCircle },
+      'DENIED': { color: 'bg-red-100 text-red-800', label: 'Denied', icon: XCircle }
     }
-  }
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'APPROVED':
-        return <CheckCircle className="h-5 w-5 text-green-600" />
-      case 'REJECTED':
-        return <XCircle className="h-5 w-5 text-red-600" />
-      case 'PENDING':
-        return <Clock className="h-5 w-5 text-yellow-600" />
-      default:
-        return <FileText className="h-5 w-5 text-gray-600" />
-    }
+    
+    const config = statusConfig[status as keyof typeof statusConfig]
+    if (!config) return <Badge className="bg-gray-100 text-gray-800">{status}</Badge>
+    
+    const Icon = config.icon
+    return (
+      <Badge className={config.color}>
+        <Icon className="h-3 w-3 mr-1" />
+        {config.label}
+      </Badge>
+    )
   }
 
   const formatDate = (dateString: string) => {
@@ -117,19 +209,230 @@ export default function ArchivedPage() {
     })
   }
 
-  const handleViewApplication = (application: ArchivedApplication) => {
-    setSelectedApplication(application)
-    setIsViewDialogOpen(true)
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-PH', {
+      style: 'currency',
+      currency: 'PHP'
+    }).format(amount)
   }
 
-  const totalApplications = archivedPeriods.reduce((total, period) => total + period.applications.length, 0)
+  const exportArchivedApplications = async (format: 'csv' | 'pdf') => {
+    try {
+      if (format === 'csv') {
+        generateCSVExport(filteredApplications)
+      } else if (format === 'pdf') {
+        generatePDFExport(filteredApplications)
+      }
+    } catch (error) {
+      console.error('Error exporting archived applications:', error)
+    }
+  }
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+  const generateCSVExport = (applications: ArchivedApplication[]) => {
+    const headers = [
+      'School ID',
+      'Name',
+      'Department',
+      'Type of Leave',
+      'Application Type',
+      'Status',
+      'Start Date',
+      'End Date',
+      'Number of Days',
+      'Applied Date',
+      'Reviewed Date',
+      'Reviewer',
+      'Reason/Purpose',
+      'Academic Year',
+      'Term Type',
+      'Total Cost',
+      'Transportation Fee',
+      'Seminar/Conference Fee',
+      'Meals & Accommodations'
+    ]
+
+    const csvData = applications.map(app => [
+      app.user.users_id,
+      app.user.name,
+      app.user.department,
+      app.type === 'leave' ? (app.leaveType || 'Unknown') : 'Travel Order',
+      app.type === 'leave' ? 'Leave Application' : 'Travel Order',
+      app.status,
+      app.startDate ? new Date(app.startDate).toLocaleDateString() : (app.dateOfTravel ? new Date(app.dateOfTravel).toLocaleDateString() : ''),
+      app.endDate ? new Date(app.endDate).toLocaleDateString() : (app.expectedReturn ? new Date(app.expectedReturn).toLocaleDateString() : ''),
+      app.days,
+      new Date(app.appliedAt).toLocaleDateString(),
+      new Date(app.reviewedAt).toLocaleDateString(),
+      app.reviewedBy,
+      app.reason || app.purpose || '',
+      app.calendarPeriod.academicYear,
+      app.calendarPeriod.termType.name,
+      app.type === 'travel' ? app.totalCashRequested : '',
+      app.type === 'travel' ? app.transportationFee : '',
+      app.type === 'travel' ? app.seminarConferenceFee : '',
+      app.type === 'travel' ? app.mealsAccommodations : ''
+    ])
+
+    const csvContent = [
+      headers.join(','),
+      ...csvData.map(row => row.map(field => `"${field}"`).join(','))
+    ].join('\n')
+
+    const csvWithBOM = '\uFEFF' + csvContent
+    const blob = new Blob([csvWithBOM], { type: 'text/csv;charset=utf-8;' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `teacher-archived-applications-${new Date().toISOString().split('T')[0]}.csv`
+    document.body.appendChild(a)
+    a.click()
+    window.URL.revokeObjectURL(url)
+    document.body.removeChild(a)
+  }
+
+  const generatePDFExport = (applications: ArchivedApplication[]) => {
+    const htmlContent = generatePDFHTML(applications)
+    
+    const printWindow = window.open('', '_blank')
+    if (printWindow) {
+      printWindow.document.write(htmlContent)
+      printWindow.document.close()
+      
+      printWindow.onload = () => {
+        printWindow.print()
+      }
+    }
+  }
+
+  const generatePDFHTML = (applications: ArchivedApplication[]) => {
+    const currentDate = new Date().toLocaleDateString()
+    const totalApplications = applications.length
+    const approvedApplications = applications.filter(app => app.status === 'APPROVED').length
+    const deniedApplications = applications.filter(app => app.status === 'DENIED').length
+
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Teacher Archived Applications Report</title>
+    <style>
+        @media print {
+            body { margin: 0; }
+            .no-print { display: none; }
+        }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #2563eb;
+            padding-bottom: 20px;
+        }
+        .header h1 {
+            color: #2563eb;
+            margin: 0;
+            font-size: 24px;
+        }
+        .summary {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .summary-item {
+            text-align: center;
+        }
+        .summary-item .number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2563eb;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th {
+            background-color: #2563eb;
+            color: white;
+            padding: 12px 8px;
+            text-align: left;
+            font-weight: bold;
+        }
+        td {
+            padding: 8px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        tr:nth-child(even) {
+            background-color: #f9fafb;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Teacher Archived Applications Report</h1>
+        <p>Generated on ${currentDate}</p>
+        <p>Total Records: ${totalApplications}</p>
+    </div>
+
+    <div class="summary">
+        <div class="summary-item">
+            <div class="number">${totalApplications}</div>
+            <div class="label">Total Applications</div>
+        </div>
+        <div class="summary-item">
+            <div class="number" style="color: #10b981;">${approvedApplications}</div>
+            <div class="label">Approved</div>
+        </div>
+        <div class="summary-item">
+            <div class="number" style="color: #ef4444;">${deniedApplications}</div>
+            <div class="label">Denied</div>
+        </div>
       </div>
-    )
+
+    <table>
+        <thead>
+            <tr>
+                <th>School ID</th>
+                <th>Name</th>
+                <th>Department</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Days</th>
+                <th>Applied Date</th>
+                <th>Reviewed Date</th>
+                <th>Academic Year</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${applications.map(app => `
+                <tr>
+                    <td>${app.user.users_id}</td>
+                    <td>${app.user.name}</td>
+                    <td>${app.user.department}</td>
+                    <td>${app.type === 'leave' ? 'Leave' : 'Travel'}</td>
+                    <td>${app.status}</td>
+                    <td>${app.startDate ? new Date(app.startDate).toLocaleDateString() : ''}</td>
+                    <td>${app.endDate ? new Date(app.endDate).toLocaleDateString() : ''}</td>
+                    <td>${app.days}</td>
+                    <td>${new Date(app.appliedAt).toLocaleDateString()}</td>
+                    <td>${new Date(app.reviewedAt).toLocaleDateString()}</td>
+                    <td>${app.calendarPeriod.academicYear}</td>
+                </tr>
+            `).join('')}
+        </tbody>
+    </table>
+</body>
+</html>
+    `
   }
 
   return (
@@ -137,224 +440,304 @@ export default function ArchivedPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Archived Applications</h1>
+          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Personal Archive</h1>
           <p className="text-muted-foreground">
-            View your leave applications from past calendar periods
+            Historical view of your approved and denied applications organized by academic calendar
           </p>
         </div>
-        <Button onClick={() => router.push('/teacher/leave')}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Leave Management
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => exportArchivedApplications('csv')}
+            className="flex items-center gap-2"
+          >
+            <FileText className="h-4 w-4" />
+            Export CSV
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => exportArchivedApplications('pdf')}
+            className="flex items-center gap-2"
+          >
+            <FileText className="h-4 w-4" />
+            Export PDF
+          </Button>
+        </div>
       </div>
 
-      {/* Summary Card */}
+      {/* Error Message */}
+      {errorMessage && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-center gap-2 text-red-800">
+            <XIcon className="h-5 w-5" />
+            <span className="font-medium">Error</span>
+          </div>
+          <p className="text-red-700 mt-1">{errorMessage}</p>
+        </div>
+      )}
+
+      {/* Calendar Periods Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {calendarPeriods.map((period) => (
+          <Card key={period.calendar_period_id} className="cursor-pointer hover:shadow-md transition-shadow">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                {period.academicYear}
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                {period.termType.name} • {formatDate(period.startDate)} - {formatDate(period.endDate)}
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">{period.applicationCount}</div>
+                  <div className="text-xs text-muted-foreground">Total</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xl font-bold text-green-600">{period.approvedCount}</div>
+                  <div className="text-xs text-muted-foreground">Approved</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xl font-bold text-red-600">{period.deniedCount}</div>
+                  <div className="text-xs text-muted-foreground">Denied</div>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full mt-3"
+                onClick={() => setSelectedCalendar(period.calendar_period_id.toString())}
+              >
+                View Applications
+        </Button>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Filters */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Archive className="h-5 w-5" />
-            Archive Summary
+            <Filter className="h-5 w-5" />
+            Filters
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="text-center p-4 bg-blue-50 rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">{archivedPeriods.length}</div>
-              <div className="text-sm text-gray-600">Past Periods</div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="text-sm font-medium">Academic Calendar</label>
+              <Select value={selectedCalendar} onValueChange={setSelectedCalendar}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select calendar period" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Calendar Periods</SelectItem>
+                  {calendarPeriods.map((period) => (
+                    <SelectItem key={period.calendar_period_id} value={period.calendar_period_id.toString()}>
+                      {period.academicYear} - {period.termType.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div className="text-center p-4 bg-green-50 rounded-lg">
-              <div className="text-2xl font-bold text-green-600">{totalApplications}</div>
-              <div className="text-sm text-gray-600">Total Applications</div>
+            <div>
+              <label className="text-sm font-medium">Status</label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="APPROVED">Approved</SelectItem>
+                  <SelectItem value="DENIED">Denied</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <div className="text-center p-4 bg-purple-50 rounded-lg">
-              <div className="text-2xl font-bold text-purple-600">
-                {archivedPeriods.length > 0 ? Math.round(totalApplications / archivedPeriods.length) : 0}
-              </div>
-              <div className="text-sm text-gray-600">Avg per Period</div>
+            <div>
+              <label className="text-sm font-medium">Application Type</label>
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="leave">Leave Applications</SelectItem>
+                  <SelectItem value="travel">Travel Orders</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Archived Periods */}
-      {archivedPeriods.length === 0 ? (
+      {/* Applications Table */}
         <Card>
-          <CardContent className="text-center py-12">
-            <Archive className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No archived periods</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              No past calendar periods with applications found.
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-6">
-          {archivedPeriods.map((period) => (
-            <Card key={period.calendar_period_id}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
-                  {period.academicYear} - {period.termType.name}
+            <Archive className="h-5 w-5" />
+            Archived Applications ({filteredApplications.length} total)
                 </CardTitle>
-                <CardDescription>
-                  {formatDate(period.startDate)} to {formatDate(period.endDate)} • {period.applications.length} application{period.applications.length !== 1 ? 's' : ''}
-                </CardDescription>
               </CardHeader>
               <CardContent>
-                {period.applications.length === 0 ? (
-                  <div className="text-center py-8">
-                    <FileText className="mx-auto h-8 w-8 text-gray-400" />
-                    <p className="mt-2 text-sm text-gray-600">No applications in this period</p>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 animate-spin" />
+                <span>Loading archived applications...</span>
+              </div>
+            </div>
+          ) : filteredApplications.length === 0 ? (
+            <div className="text-center py-12">
+              <Archive className="mx-auto h-16 w-16 text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No archived applications found</h3>
+              <p className="text-gray-500">
+                {errorMessage ? "Please check your authentication or try refreshing." : "No applications have been archived yet."}
+              </p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    {period.applications.map((application) => (
-                      <div
-                        key={application.id}
-                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
-                      >
-                        <div className="flex items-center space-x-4">
-                          <div className="flex-shrink-0">
-                            {getStatusIcon(application.status)}
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-2 mb-1">
-                              <h3 className="text-lg font-medium text-gray-900">
-                                {application.leaveType}
-                              </h3>
-                              {getStatusBadge(application.status)}
+            <>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Employee</TableHead>
+                      <TableHead>Department</TableHead>
+                      <TableHead>Leave Type</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Start Date</TableHead>
+                      <TableHead>End Date</TableHead>
+                      <TableHead>Days</TableHead>
+                      <TableHead>Applied Date</TableHead>
+                      <TableHead>Reviewed Date</TableHead>
+                      <TableHead>Academic Year</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredApplications.map((app) => (
+                      <TableRow key={app.id}>
+                        <TableCell>
+                          <Badge variant={app.type === 'leave' ? 'default' : 'secondary'}>
+                            {app.type === 'leave' ? 'Leave' : 'Travel'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={app.user.profilePicture} alt={app.user.name} />
+                              <AvatarFallback className="text-xs">
+                                {app.user.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <div className="font-medium">{app.user.name}</div>
+                              <div className="text-sm text-muted-foreground">{app.user.email}</div>
                             </div>
-                            <p className="text-sm text-gray-600 mb-2">
-                              {application.reason}
-                            </p>
-                            <div className="flex items-center space-x-4 text-sm text-gray-500">
-                              <span className="flex items-center gap-1">
-                                <Calendar className="h-4 w-4" />
-                                {formatDate(application.startDate)} - {formatDate(application.endDate)}
-                              </span>
-                              <span>{application.numberOfDays} day{application.numberOfDays !== 1 ? 's' : ''}</span>
-                              <span>Applied on {formatDate(application.appliedAt)}</span>
-                            </div>
                           </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleViewApplication(application)}
-                          >
-                            <Eye className="mr-2 h-4 w-4" />
-                            View Details
-                          </Button>
-                        </div>
-                      </div>
+                        </TableCell>
+                        <TableCell>{app.user.department}</TableCell>
+                        <TableCell>
+                          {app.type === 'travel' ? (
+                            <div>
+                              <div className="font-medium">{app.destination}</div>
+                              <div className="text-sm text-muted-foreground">{app.purpose}</div>
+                            </div>
+                          ) : (
+                            app.leaveType || 'N/A'
+                          )}
+                        </TableCell>
+                        <TableCell>{getStatusBadge(app.status)}</TableCell>
+                        <TableCell>{formatDate(app.startDate)}</TableCell>
+                        <TableCell>{formatDate(app.endDate)}</TableCell>
+                        <TableCell>{app.days}</TableCell>
+                        <TableCell>{formatDate(app.appliedAt)}</TableCell>
+                        <TableCell>{formatDate(app.reviewedAt)}</TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{app.calendarPeriod.academicYear}</div>
+                            <div className="text-sm text-muted-foreground">{app.calendarPeriod.termType.name}</div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {/* Application Details Dialog */}
-      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Application Details
-            </DialogTitle>
-            <DialogDescription>
-              Complete details of the archived leave application
-            </DialogDescription>
-          </DialogHeader>
-          
-          {selectedApplication && (
-            <div className="space-y-6">
-              {/* Basic Information */}
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <h4 className="font-medium text-gray-900">Leave Type</h4>
-                  <p className="text-gray-600">{selectedApplication.leaveType}</p>
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-900">Status</h4>
-                  <div className="mt-1">{getStatusBadge(selectedApplication.status)}</div>
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-900">Start Date</h4>
-                  <p className="text-gray-600">{formatDate(selectedApplication.startDate)}</p>
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-900">End Date</h4>
-                  <p className="text-gray-600">{formatDate(selectedApplication.endDate)}</p>
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-900">Number of Days</h4>
-                  <p className="text-gray-600">{selectedApplication.numberOfDays} day{selectedApplication.numberOfDays !== 1 ? 's' : ''}</p>
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-900">Hours</h4>
-                  <p className="text-gray-600">{selectedApplication.hours} hour{selectedApplication.hours !== 1 ? 's' : ''}</p>
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-900">Payment Status</h4>
-                  <p className="text-gray-600">{selectedApplication.paymentStatus}</p>
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-900">Applied On</h4>
-                  <p className="text-gray-600">{formatDate(selectedApplication.appliedAt)}</p>
-                </div>
+                  </TableBody>
+                </Table>
               </div>
 
-              {/* Period Information */}
-              <div className="border-t pt-4">
-                <h4 className="font-medium text-gray-900 mb-2">Calendar Period</h4>
-                <div className="grid gap-2 md:grid-cols-2">
-                  <div>
-                    <span className="text-sm text-gray-500">Academic Year:</span>
-                    <p className="text-gray-900">{selectedApplication.academicYear}</p>
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-4">
+                  <div className="flex items-center gap-4">
+                    <div className="text-sm text-muted-foreground">
+                      Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} applications
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm">Show:</label>
+                      <Select
+                        value={itemsPerPage.toString()}
+                        onValueChange={(value) => {
+                          setItemsPerPage(parseInt(value))
+                          setCurrentPage(1)
+                        }}
+                      >
+                        <SelectTrigger className="w-20">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="10">10</SelectItem>
+                          <SelectItem value="20">20</SelectItem>
+                          <SelectItem value="30">30</SelectItem>
+                          <SelectItem value="40">40</SelectItem>
+                          <SelectItem value="50">50</SelectItem>
+                        </SelectContent>
+                      </Select>
+                          </div>
+                        </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1 || isLoading}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Previous
+                    </Button>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        const page = i + 1
+                        return (
+                          <Button
+                            key={page}
+                            variant={currentPage === page ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setCurrentPage(page)}
+                            disabled={isLoading}
+                          >
+                            {page}
+                          </Button>
+                        )
+                      })}
+                        </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages || isLoading}
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <div>
-                    <span className="text-sm text-gray-500">Term:</span>
-                    <p className="text-gray-900">{selectedApplication.termType}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Reason/Purpose */}
-              <div className="border-t pt-4">
-                <h4 className="font-medium text-gray-900 mb-2">Reason/Purpose</h4>
-                <p className="text-gray-600">{selectedApplication.reason}</p>
-              </div>
-
-              {/* Specific Purpose or Description */}
-              {selectedApplication.specificPurpose && (
-                <div className="border-t pt-4">
-                  <h4 className="font-medium text-gray-900 mb-2">Specific Purpose</h4>
-                  <p className="text-gray-600">{selectedApplication.specificPurpose}</p>
                 </div>
               )}
-
-              {selectedApplication.descriptionOfSickness && (
-                <div className="border-t pt-4">
-                  <h4 className="font-medium text-gray-900 mb-2">Description of Sickness</h4>
-                  <p className="text-gray-600">{selectedApplication.descriptionOfSickness}</p>
-                </div>
-              )}
-
-              {/* Comments */}
-              {selectedApplication.comments && (
-                <div className="border-t pt-4">
-                  <h4 className="font-medium text-gray-900 mb-2">Comments</h4>
-                  <p className="text-gray-600">{selectedApplication.comments}</p>
-                </div>
-              )}
-            </div>
+            </>
           )}
-        </DialogContent>
-      </Dialog>
+        </CardContent>
+      </Card>
     </div>
   )
 }

@@ -98,6 +98,9 @@ export default function TeacherLeavePage() {
       filtered = filtered.filter(app => app.status === statusFilter)
     }
 
+    // Remove approved and rejected applications (they should be in archive)
+    filtered = filtered.filter(app => app.status !== 'APPROVED' && app.status !== 'REJECTED' && app.status !== 'DEAN_APPROVED' && app.status !== 'DEAN_REJECTED')
+
     setFilteredApplications(filtered)
   }
 

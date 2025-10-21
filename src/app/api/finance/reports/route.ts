@@ -67,9 +67,7 @@ export async function GET(req: NextRequest) {
 
     // Leave type filter - filter by leave type ID
     if (params.leaveType && params.leaveType !== 'all') {
-      filters.leaveType = {
-        leave_type_id: parseInt(params.leaveType)
-      }
+      filters.leave_type_id = parseInt(params.leaveType)
     }
 
     // Status filter

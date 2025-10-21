@@ -108,9 +108,11 @@ export async function GET(req: NextRequest) {
 
     // Leave type filter
     if (params.leaveType && params.leaveType !== 'all') {
+      console.log('🔍 Applying leave type filter:', params.leaveType)
       filters.leaveType = {
         leave_type_id: parseInt(params.leaveType)
       }
+      console.log('🔍 Leave type filter applied:', filters.leaveType)
     }
 
     // Status filter
@@ -136,7 +138,10 @@ export async function GET(req: NextRequest) {
     const prismaFilters = { ...filters }
     delete prismaFilters._applicationType
 
+    console.log('🔍 Final filters for Prisma query:', JSON.stringify(prismaFilters, null, 2))
+
     // Get leave applications with filters
+    console.log('🔍 Executing Prisma query for leave applications...')
     const applications = await prisma.leaveApplication.findMany({
       where: prismaFilters,
       include: {

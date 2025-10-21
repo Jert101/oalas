@@ -242,6 +242,21 @@ export default function DeanReportsPage() {
     }).format(amount)
   }
 
+  const getAcademicYearFromDate = (dateString: string) => {
+    const date = new Date(dateString)
+    const year = date.getFullYear()
+    const month = date.getMonth() + 1 // 0-based month
+    
+    // Academic year typically starts in June (month 6)
+    // If application is from June onwards, it's the current academic year
+    // If application is from January to May, it's the previous academic year
+    if (month >= 6) {
+      return `${year}-${year + 1}`
+    } else {
+      return `${year - 1}-${year}`
+    }
+  }
+
   const exportReport = async (format: 'csv' | 'pdf') => {
     try {
       if (format === 'csv') {
@@ -266,6 +281,7 @@ export default function DeanReportsPage() {
       'End Date',
       'Number of Days',
       'Applied Date',
+      'Academic Year',
       'Reviewed Date',
       'Reviewer',
       'Reason/Purpose',
@@ -286,6 +302,7 @@ export default function DeanReportsPage() {
       app.endDate ? new Date(app.endDate).toLocaleDateString() : (app.expectedReturn ? new Date(app.expectedReturn).toLocaleDateString() : ''),
       app.days,
       new Date(app.appliedAt).toLocaleDateString(),
+      getAcademicYearFromDate(app.appliedAt),
       app.reviewedAt ? new Date(app.reviewedAt).toLocaleDateString() : '',
       app.reviewedBy || '',
       app.reason || app.purpose || '',
@@ -450,7 +467,7 @@ export default function DeanReportsPage() {
                     <td>${app.endDate ? new Date(app.endDate).toLocaleDateString() : ''}</td>
                     <td>${app.days}</td>
                     <td>${new Date(app.appliedAt).toLocaleDateString()}</td>
-                    <td>2024-2025</td>
+                    <td>${getAcademicYearFromDate(app.appliedAt)}</td>
                 </tr>
             `).join('')}
         </tbody>

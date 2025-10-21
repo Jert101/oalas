@@ -291,26 +291,34 @@ export default function DeanReportsPage() {
       'Meals & Accommodations'
     ]
 
-    const csvData = applications.map(app => [
-      app.user.users_id,
-      app.user.name,
-      app.user.department,
-      app.type === 'leave' ? (app.leaveType || 'Unknown') : 'Travel Order',
-      app.type === 'leave' ? 'Leave Application' : 'Travel Order',
-      app.status,
-      app.startDate ? new Date(app.startDate).toLocaleDateString() : (app.dateOfTravel ? new Date(app.dateOfTravel).toLocaleDateString() : ''),
-      app.endDate ? new Date(app.endDate).toLocaleDateString() : (app.expectedReturn ? new Date(app.expectedReturn).toLocaleDateString() : ''),
-      app.days,
-      new Date(app.appliedAt).toLocaleDateString(),
-      getAcademicYearFromDate(app.appliedAt),
-      app.reviewedAt ? new Date(app.reviewedAt).toLocaleDateString() : '',
-      app.reviewedBy || '',
-      app.reason || app.purpose || '',
-      app.type === 'travel' ? app.totalCashRequested : '',
-      app.type === 'travel' ? app.transportationFee : '',
-      app.type === 'travel' ? app.seminarConferenceFee : '',
-      app.type === 'travel' ? app.mealsAccommodations : ''
-    ])
+    const csvData = applications.map(app => {
+      console.log('🔍 Application data for CSV:', {
+        users_id: app.user.users_id,
+        appliedAt: app.appliedAt,
+        academicYear: getAcademicYearFromDate(app.appliedAt)
+      })
+      
+      return [
+        app.user.users_id,
+        app.user.name,
+        app.user.department,
+        app.type === 'leave' ? (app.leaveType || 'Unknown') : 'Travel Order',
+        app.type === 'leave' ? 'Leave Application' : 'Travel Order',
+        app.status,
+        app.startDate ? new Date(app.startDate).toLocaleDateString() : (app.dateOfTravel ? new Date(app.dateOfTravel).toLocaleDateString() : ''),
+        app.endDate ? new Date(app.endDate).toLocaleDateString() : (app.expectedReturn ? new Date(app.expectedReturn).toLocaleDateString() : ''),
+        app.days,
+        new Date(app.appliedAt).toLocaleDateString(),
+        getAcademicYearFromDate(app.appliedAt),
+        app.reviewedAt ? new Date(app.reviewedAt).toLocaleDateString() : '',
+        app.reviewedBy || '',
+        app.reason || app.purpose || '',
+        app.type === 'travel' ? app.totalCashRequested : '',
+        app.type === 'travel' ? app.transportationFee : '',
+        app.type === 'travel' ? app.seminarConferenceFee : '',
+        app.type === 'travel' ? app.mealsAccommodations : ''
+      ]
+    })
 
     const csvContent = [
       headers.join(','),

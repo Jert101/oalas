@@ -66,6 +66,11 @@ const deanNavigationItems = [
     url: "/dean/activity",
     icon: IconClock,
   },
+  {
+    title: "Reports",
+    url: "/dean/reports",
+    icon: IconChartBar,
+  },
 ]
 
 // Removed Account Settings from sidebar navigation; available via user dropdown

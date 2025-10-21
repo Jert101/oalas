@@ -296,6 +296,7 @@ export default function DeanReportsPage() {
       'End Date',
       'Number of Days',
       'Applied Date',
+      'Academic Year',
       'Reviewed Date',
       'Reviewer',
       'Reason/Purpose',
@@ -316,6 +317,7 @@ export default function DeanReportsPage() {
         app.endDate ? new Date(app.endDate).toLocaleDateString() : (app.expectedReturn ? new Date(app.expectedReturn).toLocaleDateString() : ''),
         app.days,
         new Date(app.appliedAt).toLocaleDateString(),
+        app.calendarPeriod?.academicYear || 'N/A',
         app.reviewedAt ? new Date(app.reviewedAt).toLocaleDateString() : '',
         app.reviewedBy || '',
         app.reason || app.purpose || '',
@@ -466,6 +468,7 @@ export default function DeanReportsPage() {
                 <th>End Date</th>
                 <th>Days</th>
                 <th>Applied Date</th>
+                <th>Academic Year</th>
             </tr>
         </thead>
         <tbody>
@@ -480,6 +483,7 @@ export default function DeanReportsPage() {
                     <td>${app.endDate ? new Date(app.endDate).toLocaleDateString() : ''}</td>
                     <td>${app.days}</td>
                     <td>${new Date(app.appliedAt).toLocaleDateString()}</td>
+                    <td>${app.calendarPeriod?.academicYear || 'N/A'}</td>
                 </tr>
             `).join('')}
         </tbody>

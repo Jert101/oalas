@@ -12,6 +12,7 @@ import {
   IconUserCheck,
   IconClock,
   IconPlus,
+  IconArchive,
 } from "@tabler/icons-react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
@@ -70,6 +71,16 @@ const deanNavigationItems = [
     title: "Reports",
     url: "/dean/reports",
     icon: IconChartBar,
+  },
+  {
+    title: "Department Archive",
+    url: "/dean/archive/applications",
+    icon: IconArchive,
+  },
+  {
+    title: "Personal Archive",
+    url: "/dean/archive/personal",
+    icon: IconArchive,
   },
 ]
 

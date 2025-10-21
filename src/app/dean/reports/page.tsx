@@ -458,9 +458,9 @@ export default function DeanReportsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Department Reports</h1>
+          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Department Analytics</h1>
           <p className="text-muted-foreground">
-            Reports and analytics for your department applications
+            Track and analyze leave applications and travel orders from your department
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -504,27 +504,13 @@ export default function DeanReportsPage() {
           <CardContent>
             <div className="text-2xl font-bold">{totalCount}</div>
             <p className="text-xs text-muted-foreground">
-              All department applications
+              Department applications
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Approved</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {filteredApplications.filter(app => app.status === 'APPROVED').length}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Approved applications
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending</CardTitle>
+            <CardTitle className="text-sm font-medium">Pending Review</CardTitle>
             <Calendar className="h-4 w-4 text-yellow-600" />
           </CardHeader>
           <CardContent>
@@ -532,21 +518,35 @@ export default function DeanReportsPage() {
               {filteredApplications.filter(app => app.status === 'PENDING').length}
             </div>
             <p className="text-xs text-muted-foreground">
-              Pending review
+              Awaiting your review
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Denied</CardTitle>
+            <CardTitle className="text-sm font-medium">Dean Approved</CardTitle>
+            <TrendingUp className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">
+              {filteredApplications.filter(app => app.status === 'DEAN_APPROVED').length}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Approved by you
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Dean Rejected</CardTitle>
             <XCircle className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              {filteredApplications.filter(app => app.status === 'DENIED').length}
+              {filteredApplications.filter(app => app.status === 'DEAN_REJECTED').length}
             </div>
             <p className="text-xs text-muted-foreground">
-              Denied applications
+              Rejected by you
             </p>
           </CardContent>
         </Card>
@@ -558,7 +558,7 @@ export default function DeanReportsPage() {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Filter className="h-5 w-5" />
-              Filters
+              Department Filters
             </CardTitle>
             <Button
               variant="outline"
@@ -573,7 +573,7 @@ export default function DeanReportsPage() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <Label htmlFor="start-date">Start Date</Label>
+                <Label htmlFor="start-date">Application Date From</Label>
                 <Input
                   id="start-date"
                   type="date"
@@ -582,32 +582,13 @@ export default function DeanReportsPage() {
                 />
               </div>
               <div>
-                <Label htmlFor="end-date">End Date</Label>
+                <Label htmlFor="end-date">Application Date To</Label>
                 <Input
                   id="end-date"
                   type="date"
                   value={filters.endDate}
                   onChange={(e) => setFilters(prev => ({ ...prev, endDate: e.target.value }))}
                 />
-              </div>
-              <div>
-                <Label htmlFor="department">Department</Label>
-                <Select
-                  value={filters.department}
-                  onValueChange={(value) => setFilters(prev => ({ ...prev, department: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Departments</SelectItem>
-                    {referenceData?.departments.map((dept) => (
-                      <SelectItem key={dept.department_id} value={dept.department_id.toString()}>
-                        {dept.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
               <div>
                 <Label htmlFor="leave-type">Leave Type</Label>
@@ -629,7 +610,7 @@ export default function DeanReportsPage() {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="status">Status</Label>
+                <Label htmlFor="status">Application Status</Label>
                 <Select
                   value={filters.status}
                   onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}
@@ -639,11 +620,11 @@ export default function DeanReportsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Status</SelectItem>
-                    {referenceData?.statuses.map((status) => (
-                      <SelectItem key={status.status_id} value={status.name}>
-                        {status.name}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="PENDING">Pending Review</SelectItem>
+                    <SelectItem value="DEAN_APPROVED">Dean Approved</SelectItem>
+                    <SelectItem value="DEAN_REJECTED">Dean Rejected</SelectItem>
+                    <SelectItem value="APPROVED">Finance Approved</SelectItem>
+                    <SelectItem value="DENIED">Finance Denied</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -682,6 +663,12 @@ export default function DeanReportsPage() {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-800">
+                <strong>Note:</strong> These filters show applications from your department only. 
+                Use the status filter to see applications at different stages of the approval process.
+              </p>
             </div>
           </CardContent>
         )}

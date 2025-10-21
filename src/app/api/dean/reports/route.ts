@@ -20,6 +20,7 @@ const reportParamsSchema = z.object({
 })
 
 export async function GET(req: NextRequest) {
+  console.log('🚀 DEAN REPORTS API CALLED - URL:', req.url)
   try {
     const session = await getServerSession(authOptions)
     

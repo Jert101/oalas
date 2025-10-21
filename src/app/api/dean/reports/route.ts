@@ -191,19 +191,7 @@ export async function GET(req: NextRequest) {
               email: true
             }
           },
-          calendarPeriod: {
-            select: {
-              calendar_period_id: true,
-              academicYear: true,
-              startDate: true,
-              endDate: true,
-              termType: {
-                select: {
-                  name: true
-                }
-              }
-            }
-          }
+          calendarPeriod: true
         },
         orderBy: { appliedAt: 'desc' }
       })
@@ -259,19 +247,7 @@ export async function GET(req: NextRequest) {
             email: true
           }
         },
-        calendarPeriod: {
-          select: {
-            calendar_period_id: true,
-            academicYear: true,
-            startDate: true,
-            endDate: true,
-            termType: {
-              select: {
-                name: true
-              }
-            }
-          }
-        }
+        calendarPeriod: true
       },
       orderBy: { appliedAt: 'desc' }
     })

@@ -207,6 +207,11 @@ export async function GET(req: NextRequest) {
         },
         orderBy: { appliedAt: 'desc' }
       })
+      
+      console.log('🔍 Leave applications found:', applications.length)
+      console.log('🔍 First application:', applications[0])
+      console.log('🔍 First application calendar period:', applications[0]?.calendarPeriod)
+      console.log('🔍 First application calendar period ID:', applications[0]?.calendar_period_id)
     } catch (prismaError) {
       console.error('🔍 Prisma query error for leave applications:', prismaError)
       console.error('🔍 Error details:', {

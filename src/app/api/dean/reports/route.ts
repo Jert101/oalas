@@ -109,8 +109,11 @@ export async function GET(req: NextRequest) {
     // Leave type filter - filter by leave type ID
     if (params.leaveType && params.leaveType !== 'all') {
       console.log('🔍 Applying leave type filter:', params.leaveType)
+      console.log('🔍 Leave type filter type:', typeof params.leaveType)
+      console.log('🔍 Parsed leave type ID:', parseInt(params.leaveType))
       filters.leave_type_id = parseInt(params.leaveType)
       console.log('🔍 Leave type filter applied (direct field):', filters.leave_type_id)
+      console.log('🔍 Full filters object after leave type:', JSON.stringify(filters, null, 2))
     }
 
     // Status filter

@@ -107,15 +107,10 @@ export default function DeanReportsPage() {
 
   const loadReferenceData = async () => {
     try {
-      console.log('Loading reference data...')
       const response = await fetch('/api/dean/reports/reference-data')
-      console.log('Reference data response status:', response.status)
       if (response.ok) {
         const data = await response.json()
-        console.log('Reference data received:', data)
         setReferenceData(data)
-      } else {
-        console.error('Reference data response not ok:', response.status, response.statusText)
       }
     } catch (error) {
       console.error('Error loading reference data:', error)

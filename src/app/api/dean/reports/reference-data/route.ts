@@ -47,11 +47,13 @@ export async function GET(req: NextRequest) {
           name: true
         }
       }),
-      prisma.leaveType.findMany({
+      prisma.leave_types.findMany({
         select: {
           leave_type_id: true,
           name: true
-        }
+        },
+        where: { isActive: true },
+        orderBy: { name: 'asc' }
       }),
       prisma.status.findMany({
         select: {
@@ -65,7 +67,8 @@ export async function GET(req: NextRequest) {
           academicYear: true,
           startDate: true
         },
-        orderBy: { academicYear: 'desc' }
+        where: { isActive: true },
+        orderBy: { startDate: 'desc' }
       })
     ])
 

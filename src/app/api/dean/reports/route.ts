@@ -106,12 +106,12 @@ export async function GET(req: NextRequest) {
       filters.user.department_id = parseInt(params.department)
     }
 
-    // Leave type filter - temporarily disabled for debugging
-    // if (params.leaveType && params.leaveType !== 'all') {
-    //   console.log('🔍 Applying leave type filter:', params.leaveType)
-    //   filters.leave_type_id = parseInt(params.leaveType)
-    //   console.log('🔍 Leave type filter applied (direct field):', filters.leave_type_id)
-    // }
+    // Leave type filter - filter by leave type ID
+    if (params.leaveType && params.leaveType !== 'all') {
+      console.log('🔍 Applying leave type filter:', params.leaveType)
+      filters.leave_type_id = parseInt(params.leaveType)
+      console.log('🔍 Leave type filter applied (direct field):', filters.leave_type_id)
+    }
 
     // Status filter
     if (params.status && params.status !== 'all') {

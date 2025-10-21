@@ -170,8 +170,6 @@ export default function DeanReportsPage() {
       if (response.ok) {
         const data = await response.json()
         console.log('🔍 Applications loaded:', data)
-        console.log('🔍 First application calendar period:', data.applications?.[0]?.calendarPeriod)
-        console.log('🔍 First application full data:', data.applications?.[0])
         setApplications(data.applications || [])
         setTotalCount(data.totalCount || 0)
         setTotalPages(Math.ceil((data.totalCount || 0) / itemsPerPage))
@@ -307,14 +305,7 @@ export default function DeanReportsPage() {
       'Meals & Accommodations'
     ]
 
-    const csvData = applications.map(app => {
-      console.log('🔍 CSV Export - Application data:', {
-        users_id: app.user.users_id,
-        calendarPeriod: app.calendarPeriod,
-        academicYear: app.calendarPeriod?.academicYear || 'N/A'
-      })
-      
-      return [
+    const csvData = applications.map(app => [
         app.user.users_id,
         app.user.name,
         app.user.department,
@@ -333,8 +324,7 @@ export default function DeanReportsPage() {
         app.type === 'travel' ? app.transportationFee : '',
         app.type === 'travel' ? app.seminarConferenceFee : '',
         app.type === 'travel' ? app.mealsAccommodations : ''
-      ]
-    })
+      ])
 
     const csvContent = [
       headers.join(','),

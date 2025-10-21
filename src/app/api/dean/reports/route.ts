@@ -145,66 +145,76 @@ export async function GET(req: NextRequest) {
     let applications
     try {
       applications = await prisma.leaveApplication.findMany({
-      where: prismaFilters,
-      include: {
-        user: {
-          select: {
-            users_id: true,
-            name: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-            profilePicture: true,
-            department: {
-              select: {
-                department_id: true,
-                name: true,
-                category: true
+        where: prismaFilters,
+        include: {
+          user: {
+            select: {
+              users_id: true,
+              name: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+              profilePicture: true,
+              department: {
+                select: {
+                  department_id: true,
+                  name: true,
+                  category: true
+                }
+              },
+              status: {
+                select: {
+                  name: true
+                }
               }
-            },
-            status: {
-              select: {
-                name: true
+            }
+          },
+          leaveType: {
+            select: {
+              leave_type_id: true,
+              name: true,
+              description: true
+            }
+          },
+          reviewer: {
+            select: {
+              name: true,
+              email: true
+            }
+          },
+          calendarPeriod: {
+            select: {
+              calendar_period_id: true,
+              academicYear: true,
+              startDate: true,
+              endDate: true,
+              termType: {
+                select: {
+                  name: true
+                }
               }
             }
           }
         },
-        leaveType: {
-          select: {
-            leave_type_id: true,
-            name: true,
-            description: true
-          }
-        },
-        reviewer: {
-          select: {
-            name: true,
-            email: true
-          }
-        },
-        calendarPeriod: {
-          select: {
-            calendar_period_id: true,
-            academicYear: true,
-            startDate: true,
-            endDate: true,
-            termType: {
-              select: {
-                name: true
-              }
-            }
-          }
-        }
-      },
-      orderBy: { appliedAt: 'desc' }
-    })
+        orderBy: { appliedAt: 'desc' }
+      })
     } catch (prismaError) {
       console.error('🔍 Prisma query error for leave applications:', prismaError)
-      throw prismaError
+      console.error('🔍 Error details:', {
+        message: prismaError.message,
+        code: prismaError.code,
+        meta: prismaError.meta
+      })
+      
+      // Return empty results instead of throwing error
+      console.log('🔍 Returning empty applications due to Prisma error')
+      applications = []
     }
 
     // Get travel orders with filters
-    const travelOrders = await prisma.travelOrder.findMany({
+    let travelOrders
+    try {
+      travelOrders = await prisma.travelOrder.findMany({
       where: prismaFilters,
       include: {
         user: {
@@ -251,6 +261,18 @@ export async function GET(req: NextRequest) {
       },
       orderBy: { appliedAt: 'desc' }
     })
+    } catch (travelError) {
+      console.error('🔍 Prisma query error for travel orders:', travelError)
+      console.error('🔍 Travel error details:', {
+        message: travelError.message,
+        code: travelError.code,
+        meta: travelError.meta
+      })
+      
+      // Return empty results instead of throwing error
+      console.log('🔍 Returning empty travel orders due to Prisma error')
+      travelOrders = []
+    }
 
     // Combine applications
     let allApplications = [

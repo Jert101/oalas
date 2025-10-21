@@ -91,6 +91,7 @@ export async function GET(req: NextRequest) {
         },
         leaveType: {
           select: {
+            leave_type_id: true,
             name: true
           }
         },

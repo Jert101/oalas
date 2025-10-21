@@ -193,7 +193,7 @@ export default function DeanApplicationsArchivePage() {
     if (!config) return <Badge className="bg-gray-100 text-gray-800">{status}</Badge>
     
     const Icon = config.icon
-    return (
+		return (
       <Badge className={config.color}>
         <Icon className="h-3 w-3 mr-1" />
         {config.label}
@@ -435,7 +435,7 @@ export default function DeanApplicationsArchivePage() {
     `
   }
 
-  return (
+	return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -484,26 +484,26 @@ export default function DeanApplicationsArchivePage() {
               <CardTitle className="text-lg flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
                 {period.academicYear}
-              </CardTitle>
+							</CardTitle>
               <p className="text-sm text-muted-foreground">
                 {period.termType.name} • {formatDate(period.startDate)} - {formatDate(period.endDate)}
               </p>
-            </CardHeader>
-            <CardContent>
+						</CardHeader>
+						<CardContent>
               <div className="flex items-center justify-between">
                 <div className="text-center">
                   <div className="text-2xl font-bold text-blue-600">{period.applicationCount}</div>
                   <div className="text-xs text-muted-foreground">Total</div>
-                </div>
+										</div>
                 <div className="text-center">
                   <div className="text-xl font-bold text-green-600">{period.approvedCount}</div>
                   <div className="text-xs text-muted-foreground">Approved</div>
-                </div>
+									</div>
                 <div className="text-center">
                   <div className="text-xl font-bold text-red-600">{period.deniedCount}</div>
                   <div className="text-xs text-muted-foreground">Denied</div>
-                </div>
-              </div>
+										</div>
+									</div>
               <Button
                 variant="outline"
                 size="sm"
@@ -569,9 +569,9 @@ export default function DeanApplicationsArchivePage() {
                 </SelectContent>
               </Select>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+							</div>
+						</CardContent>
+					</Card>
 
       {/* Applications Table */}
       <Card>
@@ -738,8 +738,8 @@ export default function DeanApplicationsArchivePage() {
           )}
         </CardContent>
       </Card>
-    </div>
-  )
+		</div>
+	)
 }
 
 

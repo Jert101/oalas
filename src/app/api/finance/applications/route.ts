@@ -14,12 +14,14 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Get ALL applications (finance can see all applications regardless of period)
+    // Get only PENDING applications (approved/denied are moved to archive)
     const [leaveApplications, travelOrders] = await Promise.all([
-      // Leave applications
+      // Leave applications - only show pending ones
       prisma.leaveApplication.findMany({
         where: {
-          // No period filter - finance can see all applications
+          status: {
+            in: ['PENDING', 'DEAN_APPROVED', 'DEAN_REJECTED']
+          }
         },
         include: {
           user: {
@@ -53,10 +55,12 @@ export async function GET(request: NextRequest) {
           appliedAt: 'desc'
         }
       }),
-      // Travel orders
+      // Travel orders - only show pending ones
       prisma.travelOrder.findMany({
         where: {
-          // No period filter - finance can see all applications
+          status: {
+            in: ['PENDING', 'DEAN_APPROVED', 'DEAN_REJECTED']
+          }
         },
         include: {
           user: {
@@ -112,7 +116,7 @@ export async function GET(request: NextRequest) {
     const data = {
       applications: allApplications,
       currentPeriod: {
-        academicYear: 'All Periods',
+        academicYear: 'Active Applications',
         startDate: 'N/A',
         endDate: 'N/A'
       }

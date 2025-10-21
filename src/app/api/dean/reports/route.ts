@@ -140,7 +140,11 @@ export async function GET(req: NextRequest) {
 
     // Get leave applications with filters
     console.log('🔍 Executing Prisma query for leave applications...')
-    const applications = await prisma.leaveApplication.findMany({
+    console.log('🔍 Prisma filters:', JSON.stringify(prismaFilters, null, 2))
+    
+    let applications
+    try {
+      applications = await prisma.leaveApplication.findMany({
       where: prismaFilters,
       include: {
         user: {
@@ -194,6 +198,10 @@ export async function GET(req: NextRequest) {
       },
       orderBy: { appliedAt: 'desc' }
     })
+    } catch (prismaError) {
+      console.error('🔍 Prisma query error for leave applications:', prismaError)
+      throw prismaError
+    }
 
     // Get travel orders with filters
     const travelOrders = await prisma.travelOrder.findMany({

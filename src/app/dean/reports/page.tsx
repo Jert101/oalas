@@ -325,8 +325,7 @@ export default function DeanReportsPage() {
         app.type === 'travel' ? app.transportationFee : '',
         app.type === 'travel' ? app.seminarConferenceFee : '',
         app.type === 'travel' ? app.mealsAccommodations : ''
-      ]
-    })
+      ])
 
     const csvContent = [
       headers.join(','),

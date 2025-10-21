@@ -170,6 +170,8 @@ export default function DeanReportsPage() {
       if (response.ok) {
         const data = await response.json()
         console.log('🔍 Applications loaded:', data)
+        console.log('🔍 First application calendar period:', data.applications?.[0]?.calendarPeriod)
+        console.log('🔍 First application academic year:', data.applications?.[0]?.calendarPeriod?.academicYear)
         setApplications(data.applications || [])
         setTotalCount(data.totalCount || 0)
         setTotalPages(Math.ceil((data.totalCount || 0) / itemsPerPage))

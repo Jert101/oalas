@@ -117,8 +117,10 @@ export async function GET(req: NextRequest) {
       console.log('🔍 Applying leave type filter:', params.leaveType)
       console.log('🔍 Leave type filter type:', typeof params.leaveType)
       console.log('🔍 Parsed leave type ID:', parseInt(params.leaveType))
-      filters.leave_type_id = parseInt(params.leaveType)
-      console.log('🔍 Leave type filter applied (direct field):', filters.leave_type_id)
+      filters.leaveType = {
+        leave_type_id: parseInt(params.leaveType)
+      }
+      console.log('🔍 Leave type filter applied (relation):', filters.leaveType)
       console.log('🔍 Full filters object after leave type:', JSON.stringify(filters, null, 2))
     }
 
@@ -197,9 +199,12 @@ export async function GET(req: NextRequest) {
       })
       
       console.log('🔍 Leave applications found:', applications.length)
-      console.log('🔍 First application:', applications[0])
-      console.log('🔍 First application calendar period:', applications[0]?.calendarPeriod)
-      console.log('🔍 First application calendar period ID:', applications[0]?.calendar_period_id)
+      if (applications.length > 0) {
+        console.log('🔍 First application:', JSON.stringify(applications[0], null, 2))
+        console.log('🔍 First application calendar period:', applications[0]?.calendarPeriod)
+        console.log('🔍 First application calendar period ID:', applications[0]?.calendar_period_id)
+        console.log('🔍 First application academic year:', applications[0]?.calendarPeriod?.academicYear)
+      }
     } catch (prismaError) {
       console.error('🔍 Prisma query error for leave applications:', prismaError)
       console.error('🔍 Error details:', {

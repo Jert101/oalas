@@ -85,6 +85,7 @@ interface ReferenceData {
 }
 
 export default function DeanReportsPage() {
+  console.log('🚀 DEAN REPORTS PAGE LOADED')
   const [applications, setApplications] = useState<ApplicationData[]>([])
   const [filteredApplications, setFilteredApplications] = useState<ApplicationData[]>([])
   const [referenceData, setReferenceData] = useState<ReferenceData | null>(null)
@@ -107,10 +108,14 @@ export default function DeanReportsPage() {
 
   const loadReferenceData = async () => {
     try {
+      console.log('🔍 Loading reference data...')
       const response = await fetch('/api/dean/reports/reference-data')
       if (response.ok) {
         const data = await response.json()
+        console.log('🔍 Reference data loaded:', data)
         setReferenceData(data)
+      } else {
+        console.error('🔍 Failed to load reference data:', response.status, response.statusText)
       }
     } catch (error) {
       console.error('Error loading reference data:', error)
@@ -176,6 +181,7 @@ export default function DeanReportsPage() {
 
   // Load reference data on component mount
   useEffect(() => {
+    console.log('🔍 useEffect called - loading reference data')
     loadReferenceData()
   }, [])
 
@@ -605,15 +611,19 @@ export default function DeanReportsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Leave Types</SelectItem>
-                    {referenceData?.leaveTypes ? (
-                      referenceData.leaveTypes.map((type) => (
-                        <SelectItem key={type.leave_type_id} value={type.leave_type_id.toString()}>
-                          {type.name}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="loading" disabled>Loading leave types...</SelectItem>
-                    )}
+                    {(() => {
+                      console.log('🔍 Rendering leave types dropdown, referenceData:', referenceData)
+                      console.log('🔍 leaveTypes:', referenceData?.leaveTypes)
+                      return referenceData?.leaveTypes ? (
+                        referenceData.leaveTypes.map((type) => (
+                          <SelectItem key={type.leave_type_id} value={type.leave_type_id.toString()}>
+                            {type.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="loading" disabled>Loading leave types...</SelectItem>
+                      )
+                    })()}
                   </SelectContent>
                 </Select>
               </div>

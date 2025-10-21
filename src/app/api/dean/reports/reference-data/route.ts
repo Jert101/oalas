@@ -7,23 +7,35 @@ export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    // Enhanced role-based access control for deans
-    const allowedRoles = ['Dean', 'Admin']
-    if (!session || !allowedRoles.includes(session.user.role)) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Get dean's department
-    const deanUser = await prisma.user.findUnique({
-      where: { users_id: session.user.id },
-      include: { department: true }
+    // Get current user with role information
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      include: {
+        department: true,
+        role: true
+      }
     })
 
-    if (!deanUser || !deanUser.department) {
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    }
+
+    // Check if user has dean or admin role
+    const allowedRoles = ['Dean', 'Admin']
+    if (!allowedRoles.includes(user.role.name)) {
+      return NextResponse.json({ error: "Access denied. Dean role required." }, { status: 403 })
+    }
+
+    // Get dean's department
+    if (!user.department) {
       return NextResponse.json({ error: "Dean department not found" }, { status: 404 })
     }
 
-    const deanDepartmentId = deanUser.department.department_id
+    const deanDepartmentId = user.department.department_id
 
     // Get reference data
     const [departments, leaveTypes, statuses, calendarPeriods] = await Promise.all([

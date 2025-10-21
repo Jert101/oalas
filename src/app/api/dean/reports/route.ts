@@ -23,10 +23,38 @@ export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    // Enhanced role-based access control for deans
-    const allowedRoles = ['Dean', 'Admin']
-    if (!session || !allowedRoles.includes(session.user.role)) {
+    console.log('🔍 Dean Reports API - Session check:', {
+      hasSession: !!session,
+      hasUser: !!session?.user,
+      userEmail: session?.user?.email,
+      userRole: (session?.user as any)?.role,
+      userId: session?.user?.id
+    })
+    
+    if (!session?.user?.email) {
+      console.log('❌ No session or user email found')
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    // Get current user with role information
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      include: {
+        department: true,
+        role: true
+      }
+    })
+
+    if (!user) {
+      console.log('❌ User not found in database')
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    }
+
+    // Check if user has dean or admin role
+    const allowedRoles = ['Dean', 'Admin']
+    if (!allowedRoles.includes(user.role.name)) {
+      console.log('❌ Access denied. User role:', user.role.name)
+      return NextResponse.json({ error: "Access denied. Dean role required." }, { status: 403 })
     }
 
     const { searchParams } = new URL(req.url)
@@ -44,17 +72,13 @@ export async function GET(req: NextRequest) {
       limit: searchParams.get('limit') || '20'
     })
 
-    // Get dean's department
-    const deanUser = await prisma.user.findUnique({
-      where: { users_id: session.user.id },
-      include: { department: true }
-    })
-
-    if (!deanUser || !deanUser.department) {
+    // Get dean's department (user already fetched above)
+    if (!user.department) {
+      console.log('❌ Dean department not found')
       return NextResponse.json({ error: "Dean department not found" }, { status: 404 })
     }
 
-    const deanDepartmentId = deanUser.department.department_id
+    const deanDepartmentId = user.department.department_id
 
     // Build filter object
     const filters: any = {

@@ -106,13 +106,11 @@ export async function GET(req: NextRequest) {
       filters.user.department_id = parseInt(params.department)
     }
 
-    // Leave type filter - use relationship approach
+    // Leave type filter - use direct field filtering (CORRECT APPROACH)
     if (params.leaveType && params.leaveType !== 'all') {
       console.log('🔍 Applying leave type filter:', params.leaveType)
-      filters.leaveType = {
-        leave_type_id: parseInt(params.leaveType)
-      }
-      console.log('🔍 Leave type filter applied (relationship):', filters.leaveType)
+      filters.leave_type_id = parseInt(params.leaveType)
+      console.log('🔍 Leave type filter applied (direct field):', filters.leave_type_id)
     }
 
     // Status filter

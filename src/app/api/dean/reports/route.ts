@@ -58,6 +58,9 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url)
+    console.log('🔍 All search params:', Object.fromEntries(searchParams.entries()))
+    console.log('🔍 Leave type param specifically:', searchParams.get('leaveType'))
+    
     const params = reportParamsSchema.parse({
       type: searchParams.get('type') || 'detailed',
       startDate: searchParams.get('startDate') || null,
@@ -71,6 +74,8 @@ export async function GET(req: NextRequest) {
       page: searchParams.get('page') || '1',
       limit: searchParams.get('limit') || '20'
     })
+    
+    console.log('🔍 Parsed params:', params)
 
     // Get dean's department (user already fetched above)
     if (!user.department) {

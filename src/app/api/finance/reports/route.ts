@@ -94,9 +94,18 @@ export async function GET(req: NextRequest) {
     const prismaFilters = { ...filters }
     delete prismaFilters._applicationType
 
+    // Create separate filters for leave applications and travel orders
+    const leaveAppFilters = { ...prismaFilters }
+    const travelOrderFilters = { ...prismaFilters }
+    
+    // Remove leave_type_id from travel order filters since it doesn't have this field
+    if (travelOrderFilters.leave_type_id) {
+      delete travelOrderFilters.leave_type_id
+    }
+
     // Get all applications with enhanced filters and includes
     const applications = await prisma.leaveApplication.findMany({
-      where: prismaFilters,
+      where: leaveAppFilters,
       include: {
         user: {
           select: {
@@ -154,7 +163,7 @@ export async function GET(req: NextRequest) {
 
     // Also get travel orders for comprehensive reporting
     const travelOrders = await prisma.travelOrder.findMany({
-      where: prismaFilters,
+      where: travelOrderFilters,
       include: {
         user: {
           select: {

@@ -118,6 +118,7 @@ export default function DeanReportsPage() {
   }
 
   const loadApplications = useCallback(async () => {
+    console.log('🔍 loadApplications called with filters:', filters)
     setIsLoading(true)
     try {
       const queryParams = new URLSearchParams({
@@ -594,7 +595,10 @@ export default function DeanReportsPage() {
                 <Label htmlFor="leave-type">Leave Type</Label>
                 <Select
                   value={filters.leaveType}
-                  onValueChange={(value) => setFilters(prev => ({ ...prev, leaveType: value }))}
+                  onValueChange={(value) => {
+                    console.log('🔍 Leave type filter changed to:', value)
+                    setFilters(prev => ({ ...prev, leaveType: value }))
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select leave type" />

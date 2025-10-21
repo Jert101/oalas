@@ -331,7 +331,7 @@ export async function GET(req: NextRequest) {
             deanApprovedApplications,
             deanRejectedApplications
           },
-          department: deanUser.department.name,
+          department: user.department.name,
           generatedAt: new Date().toISOString()
         }
         break

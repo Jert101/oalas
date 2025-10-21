@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Check if user has dean or admin role
-    const allowedRoles = ['Dean', 'Admin']
+    const allowedRoles = ['Dean', 'Admin', 'Dean/Program Head']
     if (!allowedRoles.includes(user.role.name)) {
       console.log('❌ Access denied. User role:', user.role.name)
       return NextResponse.json({ error: "Access denied. Dean role required." }, { status: 403 })

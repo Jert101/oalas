@@ -8,9 +8,9 @@ import { z } from "zod"
 const archiveParamsSchema = z.object({
   page: z.string().optional().default('1'),
   limit: z.string().optional().default('20'),
-  calendarPeriod: z.string().optional(),
-  status: z.string().optional(),
-  type: z.string().optional()
+  calendarPeriod: z.string().nullable().optional(),
+  status: z.string().nullable().optional(),
+  type: z.string().nullable().optional()
 })
 
 export async function GET(req: NextRequest) {
@@ -27,9 +27,9 @@ export async function GET(req: NextRequest) {
     const params = archiveParamsSchema.parse({
       page: searchParams.get('page') || '1',
       limit: searchParams.get('limit') || '20',
-      calendarPeriod: searchParams.get('calendarPeriod'),
-      status: searchParams.get('status'),
-      type: searchParams.get('type')
+      calendarPeriod: searchParams.get('calendarPeriod') || null,
+      status: searchParams.get('status') || null,
+      type: searchParams.get('type') || null
     })
 
     // Build filter object

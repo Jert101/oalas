@@ -11,6 +11,7 @@ import {
   IconUsers,
   IconBuilding,
   IconClock,
+  IconArchive,
 } from "@tabler/icons-react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
@@ -58,6 +59,11 @@ const financeNavigationItems = [
     title: "Reports",
     url: "/finance/reports",
     icon: IconChartBar,
+  },
+  {
+    title: "Archive",
+    url: "/finance/archive",
+    icon: IconArchive,
   },
   {
     title: "Calendar",

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finance Reports Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Finance Reports System Test</h1>
+    
+    <div class="test-section info">
+        <h3>📋 Test Instructions</h3>
+        <ol>
+            <li><strong>Login First:</strong> Go to <a href="http://localhost:3000/login" target="_blank">http://localhost:3000/login</a></li>
+            <li><strong>Use Finance Account:</strong> Email: <code>finance.officer@ckcm.edu</code>, Password: <code>password123</code></li>
+            <li><strong>Access Reports:</strong> Go to <a href="http://localhost:3000/finance/reports" target="_blank">http://localhost:3000/finance/reports</a></li>
+            <li><strong>Check Data:</strong> You should see applications in a table format</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h3>🔍 API Test (Without Authentication)</h3>
+        <p>This will show 401 Unauthorized (expected behavior):</p>
+        <button onclick="testAPI()">Test Finance API</button>
+        <div id="api-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>📊 Database Check</h3>
+        <p>Check if test data exists in database:</p>
+        <button onclick="checkDatabase()">Check Database</button>
+        <div id="db-result"></div>
+    </div>
+
+    <div class="test-section info">
+        <h3>🎯 Expected Results</h3>
+        <ul>
+            <li><strong>API Test:</strong> Should return 401 Unauthorized (this is correct)</li>
+            <li><strong>Database Check:</strong> Should show 192 leave applications and 48 travel orders</li>
+            <li><strong>Frontend:</strong> After login, should show applications in a paginated table</li>
+        </ul>
+    </div>
+
+    <script>
+        async function testAPI() {
+            const resultDiv = document.getElementById('api-result');
+            resultDiv.innerHTML = '<p>Testing API...</p>';
+            
+            try {
+                const response = await fetch('/api/finance/reports?type=detailed&page=1&limit=5');
+                const result = `
+                    <div class="test-section ${response.ok ? 'success' : 'error'}">
+                        <h4>API Response</h4>
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <p><strong>OK:</strong> ${response.ok}</p>
+                        <p><strong>Message:</strong> ${response.status === 401 ? 'Unauthorized (Expected - need to login)' : response.statusText}</p>
+                    </div>
+                `;
+                resultDiv.innerHTML = result;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="test-section error">
+                        <h4>API Error</h4>
+                        <p>Error: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function checkDatabase() {
+            const resultDiv = document.getElementById('db-result');
+            resultDiv.innerHTML = '<p>Checking database...</p>';
+            
+            try {
+                const response = await fetch('/api/health');
+                const data = await response.json();
+                resultDiv.innerHTML = `
+                    <div class="test-section success">
+                        <h4>Database Status</h4>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                        <p><strong>MySQL:</strong> ${data.mysql?.ok ? '✅ Connected' : '❌ Error'}</p>
+                        <p><strong>Prisma:</strong> ${data.prisma?.ok ? '✅ Connected' : '❌ Error'}</p>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="test-section error">
+                        <h4>Database Error</h4>
+                        <p>Error: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

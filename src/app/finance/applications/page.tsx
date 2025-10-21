@@ -290,7 +290,7 @@ export default function FinanceApplicationsPage() {
             <div className="space-y-4">
               {applicationsData.applications.map((application) => (
                 <div
-                  key={application.leave_application_id}
+                  key={application.id}
                   className="flex flex-col lg:flex-row lg:items-center lg:justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors gap-4"
                 >
                   <div className="flex items-start space-x-4 flex-1">

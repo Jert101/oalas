@@ -1,18 +1,12 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
-import { DataTable } from "@/components/data-table"
 import { 
   Calendar, 
   FileText, 
-  CheckCircle, 
-  XCircle, 
-  AlertCircle,
   Users,
   ArrowRight
 } from "lucide-react"

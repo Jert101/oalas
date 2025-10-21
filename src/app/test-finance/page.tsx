@@ -210,7 +210,7 @@ export default function TestFinancePage() {
             <div>
               <h4 className="font-semibold mb-2">1. Check Authentication</h4>
               <p className="text-sm text-muted-foreground">
-                Make sure you're logged in with a finance account:
+                Make sure you&apos;re logged in with a finance account:
               </p>
               <ul className="text-sm text-muted-foreground ml-4 mt-2">
                 <li>• Email: finance.officer@ckcm.edu</li>

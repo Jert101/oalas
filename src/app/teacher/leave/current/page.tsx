@@ -454,9 +454,11 @@ export default function CurrentApplicationPage() {
 													</div>
 													{!application.medicalProof.endsWith('.pdf') && (
 														<div className="mt-3">
-															<img 
+															<Image 
 																src={application.medicalProof} 
 																alt="Medical Proof" 
+																width={400}
+																height={128}
 																className="max-w-full max-h-32 object-contain rounded border"
 																onError={(e) => {
 																	const target = e.target as HTMLImageElement

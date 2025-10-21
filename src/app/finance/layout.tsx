@@ -3,7 +3,6 @@
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import { toast } from "sonner"
 import { FinanceSidebar } from "@/components/finance-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import {

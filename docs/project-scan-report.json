@@ -1,0 +1,16 @@
+{
+  "workflow_version": "1.2.0",
+  "timestamps": {
+    "started": "2025-01-27T10:00:00.000Z",
+    "last_updated": "2025-01-27T10:00:00.000Z"
+  },
+  "mode": "initial_scan",
+  "scan_level": "deep",
+  "project_root": "C:\\Users\\Lenovo\\Pictures\\thesis\\oalass",
+  "output_folder": "docs",
+  "completed_steps": [],
+  "current_step": "step_1",
+  "findings": {},
+  "outputs_generated": ["project-scan-report.json"],
+  "resume_instructions": "Starting from step 1"
+}

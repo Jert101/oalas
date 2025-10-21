@@ -1,269 +1,383 @@
----
-title: OALASS Fullstack Architecture Document
----
+# Architecture Documentation - OALASS
 
-## Introduction
+## Executive Summary
 
-This document outlines the complete fullstack architecture for OALASS (Online Absence & Leave Application Support System), covering backend, frontend, and integrations. It is the single source of truth guiding development across the stack.
+The OALASS (Online Academic Leave Application System) is a comprehensive web-based platform built with Next.js 14 that manages academic leave applications for educational institutions. The system implements a modern, scalable architecture with role-based access control, real-time communication, and multi-stage approval workflows.
 
-Starter Template or Existing Project: Existing Next.js App Router project with NextAuth, Prisma (MySQL), Tailwind CSS, shadcn/ui, and sonner. Deployment targets Vercel/Node and a MySQL database.
+## Technology Stack
 
-Change Log
-| Date | Version | Description | Author |
-| --- | --- | --- | --- |
-| 2025-10-20 | 1.0 | Initial architecture document | Architect Agent |
+### Frontend Technologies
+- **Framework**: Next.js 14 with App Router
+- **UI Library**: React 18 with TypeScript
+- **Styling**: Tailwind CSS with shadcn/ui components
+- **State Management**: React Context + Zustand (optional)
+- **Forms**: React Hook Form with Zod validation
+- **Notifications**: React Hot Toast + Custom WebSocket system
 
-## High Level Architecture
+### Backend Technologies
+- **Runtime**: Node.js with Next.js API Routes
+- **Database**: MySQL with Prisma ORM
+- **Authentication**: NextAuth.js with JWT and bcrypt
+- **Email Service**: NodeMailer with Gmail SMTP
+- **File Handling**: Formidable for multipart uploads
+- **Real-time**: Custom WebSocket server
 
-### Technical Summary
-OALASS uses Next.js App Router (RSC) with route handlers and server actions for backend logic. Authentication is handled by NextAuth with JWT sessions and a Prisma adapter on MySQL. UI uses shadcn/ui and Tailwind CSS; notifications via sonner. Access control is enforced by middleware and role-aware routing. The system supports realtime via a Node-based WebSocket server for application updates.
+### Development Tools
+- **Language**: TypeScript
+- **Package Manager**: npm
+- **Database ORM**: Prisma
+- **Validation**: Zod schemas
+- **Testing**: Jest (planned)
+- **Deployment**: PM2 process manager
 
-### Platform and Infrastructure Choice
-**Platform:** Vercel (frontend+edge) + Managed MySQL (PlanetScale/RDS) or VPS Node for WebSocket
-**Key Services:** Next.js, NextAuth, Prisma, MySQL, Node WebSocket, Email (SMTP/Gmail)
-**Deployment Host and Regions:** Vercel multi-region CDN for static/edge; DB in same region group
+## Architecture Pattern
 
-Recommendation: Vercel for UI and route handlers; managed MySQL for reliability; optional separate Node process (or Vercel cron/queues alternative) for long-lived WebSocket server as already present.
+### MVC with API Routes
+The system follows a Model-View-Controller pattern adapted for Next.js:
 
-### Repository Structure
-**Structure:** Single repo, Next.js App Router with domain-focused `src/lib`, `src/app/(role)` segments.
-**Monorepo Tool:** N/A (single app). Could adopt npm workspaces if splitting shared packages later.
-**Package Organization:** UI in `components/ui`; domain logic in `lib`; API under `app/api`.
+- **Models**: Prisma schema definitions and database models
+- **Views**: React components and pages
+- **Controllers**: API route handlers in `/api` directory
 
-### High Level Architecture Diagram
-```mermaid
-graph TD
-  U[Users] -->|HTTPS| FE[Next.js (App Router)]
-  FE -->|Route Handlers/Server Actions| API[Next.js Route Handlers]
-  API --> DB[(MySQL via Prisma)]
-  FE --> WSS[WebSocket Server]
-  API --> SMTP[Email (SMTP/Gmail)]
-  FE --> CDN[CDN/Edge]
-  subgraph Auth
-    API --> NA[NextAuth + JWT + PrismaAdapter]
-  end
+### Layered Architecture
+
+```
+┌─────────────────────────────────────┐
+│           Presentation Layer        │
+│  (React Components, Pages, UI)      │
+├─────────────────────────────────────┤
+│           Business Logic Layer     │
+│  (API Routes, Services, Actions)    │
+├─────────────────────────────────────┤
+│           Data Access Layer         │
+│  (Prisma ORM, Database Queries)     │
+├─────────────────────────────────────┤
+│           Database Layer            │
+│  (MySQL Database, Schema)           │
+└─────────────────────────────────────┘
 ```
 
-### Architectural Patterns
-- **Server-First RSC:** Backend logic colocated with UI for SSR and data-fetch efficiency - _Rationale:_ Simpler data flow and caching.
-- **Repository/Data Access via Prisma:** Encapsulate queries in `lib` - _Rationale:_ Maintainability and testability.
-- **BFF (Backend For Frontend) via Route Handlers:** Tailored endpoints per UI - _Rationale:_ Simplifies contracts and auth.
-- **Role-Based Access Control:** Middleware and session-enriched roles - _Rationale:_ Security and clarity of permissions.
+## System Components
 
-## Tech Stack
+### 1. Authentication & Authorization System
 
-| Category | Technology | Version | Purpose | Rationale |
-| --- | --- | --- | --- | --- |
-| Frontend Language | TypeScript | latest | Type safety | Reliability, DX |
-| Frontend Framework | Next.js App Router | 15.4.5 | SSR/RSC, routing | Performance, DX |
-| UI Component Library | shadcn/ui + Tailwind | latest | UI primitives/styles | Consistency, velocity |
-| State Management | React state + providers | - | Local + provider state | Simplicity |
-| Backend Language | TypeScript | latest | Shared types | Consistency |
-| Backend Framework | Next.js route handlers | 15.4.5 | API and server actions | Co-location |
-| API Style | REST (route handlers) | - | Simple integration | Fits Next.js |
-| Database | MySQL via Prisma | ^6.13.0 | Persistence | Mature, relational |
-| Cache | In-memory/Edge (future) | - | Perf | Optional future |
-| File Storage | DB/Text or object store (future) | - | Attachments | Evolvable |
-| Authentication | NextAuth (JWT) | ^4.24.11 | AuthN/Z | Standard + adapters |
-| Frontend Testing | Vitest/React Testing Lib (future) | - | Unit tests | Coverage |
-| Backend Testing | Vitest (future) | - | Unit/integration | Coverage |
-| E2E Testing | Playwright (future) | - | E2E flows | Confidence |
-| Build Tool | Next build | - | Production build | Official |
-| Bundler | SWC/Next | - | Transpile/bundle | Default |
-| IaC Tool | Manual/Host console (initial) | - | Infra config | Simplicity |
-| CI/CD | Vercel + GitHub | - | Deploy pipeline | Speed |
-| Monitoring | Logs + Browser perf APIs | - | Observability | Lightweight |
-| Logging | Console + platform logs | - | Diagnostics | Simplicity |
+**Purpose**: Manages user authentication, session handling, and role-based access control.
 
-## Data Models (Conceptual)
+**Key Components**:
+- `src/lib/auth.ts` - NextAuth configuration
+- `middleware.ts` - Route protection and role-based redirection
+- `src/app/api/auth/[...nextauth]/route.ts` - Authentication API routes
 
-### User
-**Purpose:** Identity, profile, role, department
-
-**Key Attributes:**
-- users_id: string - primary key
-- email: string - unique
-- role_id: int - role relation
-- department_id: int? - department relation
-
-Relationships
-- User 1..* LeaveApplication
-- User 1..* Notification
-
-### LeaveApplication
-**Purpose:** Leave requests and status lifecycle
-
-**Key Attributes:**
-- leave_application_id: int - pk
-- users_id: string - applicant
-- status: enum - workflow status
-- leave_type_id: int - type selected
-
-Relationships
-- LeaveApplication *..1 User
-- LeaveApplication *..1 leave_types
-
-## API Specification (REST)
-
-OpenAPI (excerpt)
-```yaml
-openapi: 3.0.0
-info:
-  title: OALASS API
-  version: 1.0.0
-paths:
-  /api/user/profile:
-    get:
-      summary: Get current user profile
-    patch:
-      summary: Update current user profile
-  /api/user/change-password:
-    post:
-      summary: Change password for current user
+**Architecture**:
+```
+User Request → Middleware → Route Protection → API Handler → Database
 ```
 
-## Components
+**Features**:
+- JWT-based authentication
+- Role-based access control (RBAC)
+- Session management
+- Google OAuth integration
+- Password reset functionality
 
-### Auth Service (NextAuth)
-**Responsibility:** Session/JWT, callbacks enrich session with role/department.
-**Interfaces:** `/api/auth/[...nextauth]`
-**Dependencies:** Prisma Adapter, User/Role tables
-**Technology Stack:** NextAuth v4, Prisma, bcryptjs
+### 2. Leave Management System
 
-### Leave Service
-**Responsibility:** CRUD leave applications, validations, balances
-**Interfaces:** Route handlers under `app/api/leave/*`
-**Dependencies:** Prisma, validation schemas (Zod)
-**Technology Stack:** Next.js route handlers, Prisma
+**Purpose**: Handles leave applications, approvals, and workflow management.
 
-## Core Workflows
+**Key Components**:
+- `src/app/api/teacher/leave-applications/` - Teacher application endpoints
+- `src/app/api/dean/` - Dean approval endpoints
+- `src/app/api/finance/` - Finance approval endpoints
+- `src/lib/leave-balance-initializer.ts` - Leave balance calculations
 
-```mermaid
-sequenceDiagram
-  actor Emp as Employee
-  participant UI as Next.js UI
-  participant API as Route Handler
-  participant DB as MySQL
-  Emp->>UI: Submit leave form
-  UI->>API: POST /api/leave/applications
-  API->>DB: Create LeaveApplication
-  DB-->>API: OK
-  API-->>UI: 201 Created
-  API-->>Emp: Email/Toast Notification
+**Workflow**:
+```
+Teacher Application → Dean Review → Finance Approval → Notification
 ```
 
-## Database Schema (Prisma-driven)
+**Features**:
+- Multi-stage approval workflow
+- Real-time conflict detection
+- Leave balance tracking
+- Date validation and exemption rules
 
-- MySQL with Prisma models: `User`, `Role`, `Department`, `leave_types`, `LeaveApplication`, `Notification`, etc.
-- Indices on foreign keys and createdAt for sorting.
+### 3. Real-time Communication System
 
-## Frontend Architecture
+**Purpose**: Provides instant updates and notifications across the system.
 
-- App Router with segmented layouts (`app/(role)/...`).
-- UI primitives from shadcn/ui; global styles in `src/app/globals.css`.
-- Provider pattern in `src/app/layout.tsx` for session, theme, realtime, and toaster.
+**Key Components**:
+- `websocket-server.js` - Custom WebSocket server
+- `src/components/realtime-provider.tsx` - React context for real-time updates
+- `src/lib/notification-service.ts` - Notification management
 
-Routing Organization (example)
+**Architecture**:
 ```
-app/
-  dashboard/
-  admin/
-  dean/
-  teacher/
-  api/
+Client ←→ WebSocket Server ←→ Database ←→ Email Service
 ```
 
-Protected Route Pattern: enforced via `middleware.ts` and client checks in role layouts.
+**Features**:
+- Real-time application updates
+- Instant notifications
+- Live dashboard updates
+- WebSocket connection management
 
-## Backend Architecture
+### 4. File Management System
 
-Service Architecture: Route handlers for CRUD and server actions for mutations with Zod validation and `revalidatePath` where needed.
+**Purpose**: Handles secure file uploads and serving.
 
-Data Access Layer: Prisma client singleton in `src/lib/prisma.ts`; optional repository helpers in `src/lib/*`.
+**Key Components**:
+- `src/app/api/files/upload/route.ts` - File upload endpoint
+- `src/app/api/files/[path]/route.ts` - File serving endpoint
+- `src/lib/validation-service.ts` - File validation
 
-Auth Flow: NextAuth callbacks enrich token and session; middleware uses token to guard routes.
+**Features**:
+- Secure file uploads with authentication
+- File type validation
+- Secure file serving with proper MIME types
+- File integrity verification
 
-## Unified Project Structure
+### 5. Notification System
 
-Single-repo Next.js app with `src/app`, `src/components`, `src/lib`, `prisma`, `public`, `scripts`, and `docs`.
+**Purpose**: Multi-channel notification delivery.
 
-## Development Workflow
+**Key Components**:
+- `src/lib/notification-service.ts` - Notification logic
+- `src/lib/email-service.ts` - Email delivery
+- `src/lib/gmail-service.ts` - Gmail integration
 
-- Prerequisites: Node LTS, MySQL instance, env vars
-- Setup: `npm i` → `npm run db:push` → `npm run dev`
-- Dev Commands: `npm run dev`, `npm run dev:full` (with WebSocket server)
+**Channels**:
+- Database notifications (persistent)
+- Email notifications (external)
+- Real-time WebSocket notifications (instant)
 
-Environment Configuration
-- Frontend: NextAuth URLs, public keys
-- Backend: DATABASE_URL or DB_* vars (auto-synthesized in prisma client)
-- Shared: SMTP credentials for email
+## Database Architecture
 
-## Deployment Architecture
+### Schema Design
+The database uses a relational design with the following key entities:
 
-Frontend Deployment
-- Platform: Vercel
-- Build Command: `npm run build`
-- Output: `.next`
-- CDN/Edge: Vercel CDN
+- **User Management**: Users, Roles, Departments, Statuses
+- **Leave System**: Leave Applications, Travel Orders, Leave Types
+- **Balance System**: Leave Balances, Leave Limits
+- **Calendar System**: Calendar Periods, Term Types
+- **Notification System**: Notifications, Account Setup Requests
 
-Backend Deployment
-- Platform: Vercel (route handlers) + optional Node process for WebSocket
-- Build: `npm run build`
-- Method: Vercel auto-deploy; Node service on VPS if needed
+### Relationships
+```
+User (1) ←→ (N) Leave Application
+User (1) ←→ (N) Travel Order
+User (1) ←→ (N) Leave Balance
+Department (1) ←→ (N) User
+Role (1) ←→ (N) User
+Leave Type (1) ←→ (N) Leave Application
+Calendar Period (1) ←→ (N) Leave Application
+```
 
-CI/CD Pipeline
-- GitHub → Vercel preview/prod
+### Data Integrity
+- Foreign key constraints
+- Unique constraints on critical fields
+- Check constraints for data validation
+- Indexes for performance optimization
 
-Environments
-- Development: localhost
-- Staging: Vercel preview, staging DB
-- Production: Vercel prod, prod DB
+## API Architecture
 
-## Security and Performance
+### RESTful Design
+The API follows RESTful principles with clear resource-based URLs:
 
-Frontend Security
-- CSP headers (platform-level), sanitize inputs client-side
+```
+/api/auth/*          - Authentication endpoints
+/api/admin/*         - Admin management
+/api/teacher/*       - Teacher operations
+/api/dean/*          - Dean operations
+/api/finance/*       - Finance operations
+/api/notifications/* - Notification management
+/api/files/*         - File operations
+```
 
-Backend Security
-- Zod validation at API/server actions; rate-limit sensitive endpoints (future); strict CORS defaults
-
-Authentication Security
-- JWT sessions; minimal token surface; rotate secrets per environment
-
-Performance Optimization
-- RSC for server data; avoid over-fetch; Prisma query logs in dev for tuning; indices on hot paths
-
-## Testing Strategy
-
-- Pyramid: unit → integration → E2E
-- Frontend: component tests with RTL (future)
-- Backend: handler tests with Vitest (future)
-- E2E: Playwright covering critical flows (future)
-
-## Coding Standards
-
-- Types live in `src/types` or shared modules; avoid `any`
-- Never mutate shared state; use provider/local state
-- API calls via fetch wrappers or server actions; no direct DB from client
-- env vars accessed via typed config helpers
-
-## Error Handling Strategy
-
-- Unified error shape for APIs; toast user-facing errors; log server details securely
-
-```ts
-interface ApiError {
-  error: { code: string; message: string; details?: Record<string, any>; timestamp: string; requestId: string };
+### Request/Response Format
+```json
+{
+  "success": boolean,
+  "data": object|array,
+  "message": string,
+  "error": string
 }
 ```
 
-## Monitoring and Observability
+### Authentication Flow
+```
+1. User Login → NextAuth.js → JWT Token
+2. API Request → Middleware → Token Validation
+3. Role Check → Route Access → Response
+```
 
-- Frontend: Web Vitals, error boundary reporting
-- Backend: Platform logs; structured console logs; DB query warnings in dev
+## Security Architecture
 
-## Checklist Results Report
+### Authentication
+- JWT-based session management
+- NextAuth.js integration
+- Google OAuth support
+- Password hashing with bcrypt
 
-Pending: Run `architect-checklist` to validate architecture and record outcomes here.
+### Authorization
+- Role-based access control (RBAC)
+- Route-level protection
+- API endpoint authorization
+- Department-based access control
 
+### Data Security
+- Input validation with Zod schemas
+- SQL injection prevention via Prisma ORM
+- XSS protection with React
+- CSRF protection with NextAuth.js
 
+### File Security
+- Authentication-required file uploads
+- File type validation
+- Secure file serving
+- File integrity checks
+
+## Performance Architecture
+
+### Caching Strategy
+- Next.js built-in caching
+- Database query optimization
+- API response caching
+- Static asset optimization
+
+### Database Optimization
+- Indexed queries for performance
+- Connection pooling with Prisma
+- Query optimization
+- Pagination for large datasets
+
+### Real-time Performance
+- WebSocket connection pooling
+- Efficient event broadcasting
+- Minimal data transfer
+- Connection management
+
+## Deployment Architecture
+
+### Development Environment
+```
+Local Development → MySQL Database → WebSocket Server
+```
+
+### Production Environment
+```
+Vercel (Frontend) → External MySQL → WebSocket Server (Railway/Render)
+```
+
+### Process Management
+- PM2 for WebSocket server
+- Next.js built-in process management
+- Database connection pooling
+- Error handling and logging
+
+## Scalability Considerations
+
+### Horizontal Scaling
+- Stateless API design
+- Database connection pooling
+- WebSocket server clustering
+- Load balancer compatibility
+
+### Vertical Scaling
+- Database query optimization
+- Caching strategies
+- Memory management
+- CPU optimization
+
+### Future Enhancements
+- Microservices architecture
+- Event-driven architecture
+- Message queue integration
+- Advanced caching layers
+
+## Monitoring and Logging
+
+### Application Monitoring
+- Error tracking and reporting
+- Performance metrics
+- User activity logging
+- System health checks
+
+### Database Monitoring
+- Query performance tracking
+- Connection monitoring
+- Index usage analysis
+- Storage optimization
+
+## Integration Points
+
+### External Services
+- Gmail SMTP for email delivery
+- Google OAuth for authentication
+- File storage for document management
+- WebSocket server for real-time communication
+
+### Internal Services
+- Authentication service
+- Notification service
+- File management service
+- Leave balance service
+
+## Error Handling
+
+### API Error Handling
+- Consistent error response format
+- HTTP status code standards
+- Error logging and tracking
+- User-friendly error messages
+
+### Database Error Handling
+- Transaction management
+- Rollback strategies
+- Connection error handling
+- Data integrity validation
+
+### Frontend Error Handling
+- React error boundaries
+- Form validation errors
+- Network error handling
+- User feedback mechanisms
+
+## Testing Strategy
+
+### Unit Testing
+- API endpoint testing
+- Service function testing
+- Database model testing
+- Utility function testing
+
+### Integration Testing
+- API integration tests
+- Database integration tests
+- Authentication flow testing
+- File upload testing
+
+### End-to-End Testing
+- User workflow testing
+- Cross-browser testing
+- Performance testing
+- Security testing
+
+## Maintenance and Updates
+
+### Code Maintenance
+- TypeScript for type safety
+- ESLint for code quality
+- Prettier for code formatting
+- Git hooks for pre-commit checks
+
+### Database Maintenance
+- Migration management
+- Schema versioning
+- Data backup strategies
+- Performance monitoring
+
+### Security Updates
+- Dependency updates
+- Security patch management
+- Vulnerability scanning
+- Access control reviews

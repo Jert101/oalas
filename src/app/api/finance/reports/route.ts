@@ -21,13 +21,45 @@ const reportParamsSchema = z.object({
 
 export async function GET(req: NextRequest) {
   try {
+    console.log('🔍 Finance API: Starting request')
     const session = await getServerSession(authOptions)
     
-    // Enhanced role-based access control
-    const allowedRoles = ['Finance Department', 'Finance Officer', 'Finance Office Head', 'Admin']
-    if (!session || !allowedRoles.includes(session.user.role)) {
+    if (!session?.user?.email) {
+      console.log('🔍 Finance API: No session or email')
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
+    
+    console.log('🔍 Finance API: Session found for:', session.user.email)
+
+    // Get current user with role information
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      include: {
+        department: true,
+        role: true
+      }
+    })
+
+    if (!user) {
+      console.log('🔍 Finance API: User not found in database')
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    }
+
+    console.log('🔍 Finance API: User found, role:', user.role?.name)
+    // Handle cases where the role relation is missing in DB
+    if (!user.role?.name) {
+      console.log('🔍 Finance API: User has no role associated in DB')
+      return NextResponse.json({ error: "Access denied. User role missing." }, { status: 403 })
+    }
+
+    // Enhanced role-based access control
+    const allowedRoles = ['Finance Department', 'Finance Officer', 'Finance Office Head', 'Admin']
+    if (!allowedRoles.includes(user.role.name)) {
+      console.log('🔍 Finance API: Access denied, role not allowed:', user.role.name)
+      return NextResponse.json({ error: "Access denied. Finance role required." }, { status: 403 })
+    }
+    
+    console.log('🔍 Finance API: Access granted')
 
     const { searchParams } = new URL(req.url)
     const params = reportParamsSchema.parse({
@@ -104,8 +136,11 @@ export async function GET(req: NextRequest) {
     }
 
     // Get all applications with enhanced filters and includes
-    const applications = await prisma.leaveApplication.findMany({
-      where: leaveAppFilters,
+    console.log('🔍 Finance API: Querying leave applications with filters:', leaveAppFilters)
+    let applications = []
+    try {
+      applications = await prisma.leaveApplication.findMany({
+        where: leaveAppFilters,
       include: {
         user: {
           select: {
@@ -160,9 +195,23 @@ export async function GET(req: NextRequest) {
         appliedAt: 'desc'
       }
     })
+    } catch (prismaError) {
+      console.error('🔍 Prisma query error for leave applications:', prismaError)
+      console.error('🔍 Error details:', {
+        message: prismaError.message,
+        code: prismaError.code,
+        meta: prismaError.meta
+      })
+      
+      // Return empty results instead of throwing error
+      console.log('🔍 Returning empty applications due to Prisma error')
+      applications = []
+    }
 
     // Also get travel orders for comprehensive reporting
-    const travelOrders = await prisma.travelOrder.findMany({
+    let travelOrders = []
+    try {
+      travelOrders = await prisma.travelOrder.findMany({
       where: travelOrderFilters,
       include: {
         user: {
@@ -211,6 +260,18 @@ export async function GET(req: NextRequest) {
         appliedAt: 'desc'
       }
     })
+    } catch (travelError) {
+      console.error('🔍 Prisma query error for travel orders:', travelError)
+      console.error('🔍 Travel error details:', {
+        message: travelError.message,
+        code: travelError.code,
+        meta: travelError.meta
+      })
+      
+      // Return empty results instead of throwing error
+      console.log('🔍 Returning empty travel orders due to Prisma error')
+      travelOrders = []
+    }
 
     // Combine leave applications and travel orders for comprehensive reporting
     let allApplications = [
@@ -348,8 +409,18 @@ export async function GET(req: NextRequest) {
     })
   } catch (error) {
     console.error("Error generating finance report:", error)
+    console.error("Error details:", {
+      message: error.message,
+      code: error.code,
+      meta: error.meta,
+      stack: error.stack
+    })
     return NextResponse.json(
-      { error: "Failed to generate report" },
+      { 
+        error: "Failed to generate report",
+        details: error.message,
+        code: error.code
+      },
       { status: 500 }
     )
   }

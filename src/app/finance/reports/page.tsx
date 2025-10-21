@@ -25,15 +25,9 @@ import {
 import { 
   FileText, 
   Download,
-  BarChart3,
-  TrendingUp,
-  DollarSign,
-  Calendar,
-  Users,
   Filter,
   ChevronLeft,
-  ChevronRight,
-  XCircle
+  ChevronRight
 } from "lucide-react"
 
 interface ApplicationData {
@@ -216,14 +210,8 @@ export default function FinanceReportsPage() {
       filtered = filtered.filter(app => app.user.department === filters.department)
     }
 
-    // Leave type filter
-    if (filters.leaveType !== 'all') {
-      if (filters.leaveType === 'Travel Order') {
-        filtered = filtered.filter(app => app.type === 'travel')
-      } else {
-        filtered = filtered.filter(app => app.leaveType === filters.leaveType)
-      }
-    }
+    // Leave type filter - this is handled server-side, so we don't need client-side filtering
+    // The server already filters by leave_type_id, so we just pass through the results
 
     // Status filter
     if (filters.status !== 'all') {
@@ -633,7 +621,7 @@ export default function FinanceReportsPage() {
                   <SelectContent>
                     <SelectItem value="all">All Leave Types</SelectItem>
                     {referenceData?.leaveTypes.map(type => (
-                      <SelectItem key={type.leave_type_id} value={type.name}>
+                      <SelectItem key={type.leave_type_id} value={type.leave_type_id.toString()}>
                         {type.name}
                       </SelectItem>
                     ))}
